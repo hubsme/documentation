@@ -1,0 +1,78 @@
+---
+title: "API REST del backend Hubsme y Swagger UI"
+sidebarTitle: "Endpoints"
+description: "Referencia general de la API REST del backend Hubsme: prefijos, autenticación JWT, Swagger UI y generación del cliente tipado con swagger-typescript-api."
+---
+
+El backend expone una API REST documentada con Swagger. La documentación interactiva se sirve en `http://localhost:6001/api` (`setupSwagger` en `src/main.ts`) y desde ahí el frontend genera automáticamente un cliente tipado.
+
+## Prefijos y autenticación
+
+| Prefijo | Protección | Uso |
+| --- | --- | --- |
+| `/auth` | Público (parcial) | Login, registro, invitaciones, OAuth Google, recuperación de contraseña. |
+| `/admin/*` | JWT (`JwtAuthGuard`) | Operaciones autenticadas de PYMES y consultores. |
+| `/admin/backoffice/*` | JWT administrativo | Operaciones del equipo interno de Hubsme. |
+| `/public/consultant/*` | Público | Catálogo público de consultores. |
+| `/storage/*` | JWT | Subida, descarga y eliminación de archivos. |
+
+Ejemplo de request autenticada:
+
+```bash Autorización con JWT
+curl https://api.hubsme.example/admin/meeting/find-all \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
+## Controllers registrados
+
+Rutas base tomadas directamente de los decoradores `@Controller` del proyecto.
+
+| Controller | Ruta base |
+| --- | --- |
+| `AuthController` | `/auth` |
+| `AdminAuthController` | `/admin/auth` |
+| `AiController` | `/admin/ia` |
+| `UserController` | `/admin/user` |
+| `IdentityVerificationController` | `/admin/identity-verification` |
+| `PymeController` | `/admin/pyme` |
+| `PymeAdminController` | `/admin/backoffice/pyme` |
+| `ConsultantController` | `/admin/consultant` |
+| `ConsultantAdminController` | `/admin/backoffice/consultant` |
+| `ConsultantAvailabilityController` | `/admin/consultant-availability` |
+| `ConsultantGoogleCalendarController` | `/admin/consultant-google-calendar` |
+| `ConsultantServiceOfferController` | `/admin/service-offer` |
+| `ServiceRequestController` | `/admin/service` |
+| `MeetingController` | `/admin/meeting` |
+| `MeetingAdminController` | `/admin/backoffice/meeting` |
+| `TaskController` | `/admin/task` |
+| `DiagnosticController` | `/admin/diagnostic` |
+| `DiagnosticDocumentController` | `/admin/diagnostic-document` |
+| `MercadoPagoController` | `/admin/mercado-pago` |
+| `SubscriptionController` | `/admin/subscription` |
+| `PromotionCodeController` | `/admin/promotion-code` |
+| `PromotionCodeAdminController` | `/admin/promotion-code` |
+| `EmailController` | `/admin/email` |
+| `WhatsappController` | `/admin/whatsapp` |
+| `FeedbackController` | `/admin/feedback` |
+| `FeedbackAdminController` | `/admin/backoffice/feedback` |
+| `DashboardController` | `/admin/dashboard` |
+| `PublicConsultantController` | `/public/consultant` |
+| `StorageController` | `/storage` |
+
+Para el detalle de rutas y verbos, revisa el capítulo de módulos correspondiente o abre directamente Swagger UI.
+
+## Cliente tipado para el frontend
+
+El backend expone el schema OpenAPI y genera el cliente TypeScript con `swagger-typescript-api`.
+
+```bash Generar el cliente tipado
+npm run generate:types
+```
+
+- El script vive en `scripts/generate-api-types.ts`.
+- El artefacto resultante se consume desde el frontend en `src/api/backend.api.ts`.
+- Cada cambio en DTOs, endpoints o interfaces debe ir acompañado de una regeneración para mantener la firma sincronizada.
+
+<Note>
+  Los DTOs se importan siempre en los controllers; nunca se declaran tipos inline. Esto asegura que Swagger genere schemas consistentes y que el cliente tipado los exponga como interfaces reutilizables.
+</Note>

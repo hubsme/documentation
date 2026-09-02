@@ -1,0 +1,107 @@
+---
+title: "Flujo de datos del backend Hubsme"
+sidebarTitle: "Flujo de Datos"
+description: "Ciclo de vida de las peticiones autenticadas, contrato de fechas, reuniones Teams, webhook de Mercado Pago y webhook de WhatsApp con rawBody."
+---
+
+El backend de Hubsme procesa peticiones autenticadas, webhooks de proveedores externos y trabajos programados. Todos los flujos comparten dos reglas transversales: los timestamps se persisten en UTC y se presentan en `America/Lima` mediante los helpers de `src/functions/date.function.ts`, y el alcance por PYME se resuelve en cada request desde `pyme_member`, no desde el token ni desde parámetros del cliente.
+
+## Autenticación JWT
+
+<Steps>
+  <Step title="Login o registro">
+    El cliente llama a `POST /auth/login` o `POST /auth/register`. `AuthService` valida credenciales con bcrypt y firma un JWT que identifica al usuario.
+  </Step>
+  <Step title="Request autenticada">
+    En cada petición bajo `/admin/*`, `JwtAuthGuard` valida el token contra `JWT_SECRET` y ejecuta `JwtStrategy`.
+  </Step>
+  <Step title="Resolución de organización">
+    `JwtStrategy` consulta `pyme_member` para obtener la membresía activa del usuario y adjunta `pymeId` y `membershipRole` al request. El identificador enviado por el navegador nunca se usa como fuente de verdad.
+  </Step>
+  <Step title="Ejecución">
+    El controlador recibe el usuario resuelto y delega al servicio, que ejecuta la lógica y usa los repositorios correspondientes.
+  </Step>
+</Steps>
+
+## Contrato de fechas
+
+Todos los módulos siguen el mismo contrato para evitar desfases por zona horaria.
+
+- Los instantes que viajan por API se serializan en ISO 8601 UTC, por ejemplo `2026-08-20T05:00:00.000Z`.
+- Las fechas calendario sin hora usan `YYYY-MM-DD`.
+- `peruDateOnlyToUtc('2026-08-20')` convierte una fecha calendario a instante desde la medianoche de Perú.
+- `formatInPeru(instant)` formatea un instante UTC para presentación en `America/Lima`.
+- `dateKeyInPeru()` y `monthKeyInPeru()` generan claves diarias y mensuales estables.
+
+<Warning>
+  Nunca uses `new Date('YYYY-MM-DD')` en el backend. JavaScript lo interpreta como medianoche UTC, no como medianoche de Perú.
+</Warning>
+
+```typescript
+import { dateKeyInPeru, formatInPeru, peruDateOnlyToUtc } from '@functions/date.function';
+
+const today = dateKeyInPeru();
+const dueAt = peruDateOnlyToUtc('2026-08-20');
+const label = formatInPeru(new Date(), { dateStyle: 'long', timeStyle: 'short' });
+```
+
+## Creación de reuniones Teams
+
+<Steps>
+  <Step title="Solicitud">
+    La PYME crea la reunión con `POST /admin/meeting/create` proponiendo horarios candidatos. El registro queda en estado pendiente.
+  </Step>
+  <Step title="Confirmación">
+    El consultor selecciona un horario con `POST /admin/meeting/confirm-option/:id` o confirma directamente con `POST /admin/meeting/confirm/:id`.
+  </Step>
+  <Step title="Calendar-backed en Microsoft Graph">
+    `TeamsMeetingService` crea un evento en el calendario del organizador (`MS_GRAPH_TEAMS_ORGANIZER_USER_ID`) con `isOnlineMeeting: true` y `onlineMeetingProvider: 'teamsForBusiness'`.
+  </Step>
+  <Step title="Configuración del onlineMeeting">
+    Graph devuelve el `joinWebUrl` y el backend hace `PATCH` con `recordAutomatically: true`, `meetingSpokenLanguageTag: 'es-ES'`, `allowedPresenters: 'everyone'` y `lobbyBypassSettings.scope: 'everyone'`.
+  </Step>
+  <Step title="Persistencia y notificaciones">
+    Se guardan `teamsOnlineMeetingId` y `joinWebUrl` en `meeting`, se programan notificaciones en `scheduled-notification` y se envían correos y mensajes de WhatsApp.
+  </Step>
+</Steps>
+
+Para entrar a la sala, el cliente llama a `GET /admin/meeting/access/:id`. El backend valida que el usuario participe en la reunión y que el horario esté dentro de la ventana; solo entonces devuelve el `joinWebUrl` para redirección.
+
+## Webhook de Mercado Pago
+
+<Steps>
+  <Step title="Recepción del evento">
+    Mercado Pago llama a `POST /admin/mercado-pago/webhook` con el `payment_id`. El backend consulta el pago real vía API de Mercado Pago.
+  </Step>
+  <Step title="Actualización del checkout">
+    El servicio actualiza `checkout.amount`, `checkout.marketplace_fee` (comisión contable de Hubsme según `MERCADO_PAGO_PLATFORM_FEE_PERCENT`) y persiste el `net_received_amount` desde `raw_payment.transaction_details`.
+  </Step>
+  <Step title="Creación idempotente del payout">
+    Si es un cobro real de consultoría, se crea `meeting_consultant_payout` en estado `pending` por `net_received_amount - marketplace_fee`. La operación es idempotente.
+  </Step>
+  <Step title="Depósito manual y confirmación">
+    El administrador ejecuta el depósito fuera del sistema y desde Backoffice registra referencia, constancia PDF/imagen, fecha y responsable. El payout pasa a `paid`.
+  </Step>
+</Steps>
+
+## Webhook de WhatsApp
+
+`main.ts` desactiva el body parser por defecto y captura el `rawBody` en el request antes de parsear JSON. Esto permite validar la firma del webhook de WhatsApp Cloud API.
+
+```typescript
+app.use(
+  json({
+    limit: '50mb',
+    verify: (request, _response, buffer) => {
+      (request as WhatsappWebhookRequest).rawBody = Buffer.from(buffer);
+    },
+  }),
+);
+```
+
+- `GET /admin/whatsapp/webhook`: handshake de verificación de Meta.
+- `POST /admin/whatsapp/webhook`: recepción de eventos entrantes. El servicio valida la firma con el `rawBody` y despacha el mensaje al flujo de negocio.
+
+<Note>
+  Cualquier middleware que reemplace el body parser debe preservar `rawBody`. Sin el buffer original la verificación de firma falla.
+</Note>

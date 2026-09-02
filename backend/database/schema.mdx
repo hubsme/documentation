@@ -1,0 +1,51 @@
+---
+title: "Modelo de datos y tablas Drizzle en Hubsme"
+sidebarTitle: "Esquema"
+description: "Esquema PostgreSQL del backend Hubsme definido con Drizzle ORM: tablas de usuarios, empresas, consultores, reuniones, pagos, diagnósticos y retroalimentación."
+---
+
+El backend usa Drizzle ORM para modelar el esquema PostgreSQL. Cada tabla vive en un archivo `*.table.ts` bajo `src/db/tables/` y se registra en `drizzle.config.ts` con la ruta `./src/db/tables/*.table.ts`, salida en `./drizzle`.
+
+## Tablas principales
+
+| Tabla | Propósito | Relaciones clave |
+| --- | --- | --- |
+| `user` | Cuentas de la plataforma. | Base de `pyme_member`, `consultant`, `subscription`. |
+| `pyme` | Empresa (organización). | Enlaza con `pyme_member`, `pyme_invitation`, `subscription`. |
+| `pyme_member` | Membresía usuario-PYME con rol. | `user_id`, `pyme_id`. Fuente de verdad del alcance por PYME. |
+| `pyme_invitation` | Invitaciones a integrarse a una PYME. | Hash SHA-256 del token, expiración a 7 días. |
+| `consultant` | Perfil profesional del consultor. | Enlaza con `user`, `consultant_availability`, `consultant_service_offer`. |
+| `consultant_availability` | Bloques y reglas de disponibilidad. | `consultant_id`. |
+| `consultant_google_calendar` | Conexión OAuth con Google Calendar. | `consultant_id`. |
+| `consultant_mercado_pago_account` | Cuenta OAuth de Mercado Pago del consultor. | `consultant_id`. |
+| `consultant_service_offer` | Catálogo de ofertas de servicio publicadas. | `consultant_id`. |
+| `meeting` | Reunión (calendar-backed en Teams). | `pyme_id`, `consultant_id`, `teams_online_meeting_id`, `join_web_url`. |
+| `meeting_consultant_payout` | Obligación de pago al consultor. | `meeting_id`, `checkout_id`. |
+| `meeting_reschedule_history` | Historial de cambios de horario. | `meeting_id`. |
+| `task` | Tareas de seguimiento manuales o generadas por IA. | `meeting_id`, `service_request_id`. |
+| `diagnostic` | Diagnóstico empresarial. | `pyme_id`, `consultant_id`. |
+| `diagnostic_document` | Documentos derivados del diagnóstico. | `diagnostic_id`. |
+| `subscription` | Suscripción activa a un plan. | `user_id`, `subscription_plan_id`. |
+| `subscription_plan` | Catálogo de planes. | Referenciado por `subscription`. |
+| `checkout` | Registro de cobros Mercado Pago. | `meeting_id`, `service_request_id`. |
+| `promotion_code` | Cupones de descuento y acceso. | Referenciado por `checkout`. |
+| `service_request` | Solicitud de servicio de consultoría. | `pyme_id`, `consultant_id`, `checkout_id`. |
+| `scheduled_notification` | Cola de recordatorios por correo y WhatsApp. | `meeting_id`. |
+| `dashboard_alert` | Alertas para el dashboard interno. | Alertas operativas. |
+| `feedback` | Hilos de retroalimentación de usuarios. | `user_id`. |
+| `feedback_reply` | Respuestas al hilo. | `feedback_id`. |
+| `feedback_attachment` | Adjuntos de retroalimentación. | `feedback_id`. |
+
+<Info>
+  Los alias `@db` y `@modules` facilitan importar el esquema. `drizzle-kit` lee `./src/db/tables/*.table.ts` para introspección y `db:studio` levanta la interfaz visual.
+</Info>
+
+## Reglas de dominio importantes
+
+- El backend nunca confía en el `pymeId` del cliente. El alcance de cada request se resuelve en `JwtStrategy` a partir de `pyme_member`.
+- Las invitaciones aceptadas por un correo sin cuenta previa crean simultáneamente `user` y `pyme_member`, sin crear otra fila en `pyme` ni otra suscripción.
+- Los pagos guardan el neto real (`net_received_amount` de Mercado Pago) y la comisión contable de Hubsme (`marketplace_fee`) por separado para diferenciar cargos reales y contables.
+
+<Warning>
+  El schema es la fuente de verdad. Cualquier cambio de columna, tipo o restricción debe reflejarse en una migración SQL manual bajo `src/db/migrations/`.
+</Warning>

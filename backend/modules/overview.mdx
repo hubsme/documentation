@@ -1,0 +1,52 @@
+---
+title: "Módulos del backend Hubsme por dominio"
+sidebarTitle: "Vista General"
+description: "Mapa de los módulos NestJS del backend Hubsme agrupados por dominio funcional: identidad, empresas, reuniones, IA, pagos, notificaciones y backoffice."
+---
+
+El backend de Hubsme está organizado en 24 módulos NestJS bajo `src/modules/`. Cada módulo agrupa un controlador, un servicio, un repositorio, DTOs y, cuando corresponde, integraciones con proveedores externos. Los módulos se agrupan por dominio funcional para facilitar la navegación.
+
+<CardGroup cols={2}>
+  <Card title="Identidad y usuarios" icon="users" href="/backend/modules/auth-users">
+    Autenticación JWT pública y administrativa, perfiles de usuario y verificación de identidad DNI/RUC.
+  </Card>
+
+  <Card title="PYMES y consultores" icon="handshake" href="/backend/modules/pyme-consultant">
+    Empresas con membresías compartidas, consultores, disponibilidad, ofertas de servicio y solicitudes de trabajo.
+  </Card>
+
+  <Card title="Reuniones y Teams" icon="video" href="/backend/modules/meetings-teams">
+    Solicitud, confirmación y ejecución de reuniones con integración calendar-backed de Microsoft Teams, tareas y notificaciones programadas.
+  </Card>
+
+  <Card title="Diagnósticos e IA" icon="brain" href="/backend/modules/diagnostics-ai">
+    Diagnósticos empresariales, documentos generados y funciones de Google Gemini (CV, chat de servicios, plan de pagos, match).
+  </Card>
+
+  <Card title="Pagos y suscripciones" icon="credit-card" href="/backend/modules/payments-subscriptions">
+    Mercado Pago con checkout Hubsme, obligaciones de pago a consultores, planes de suscripción y cupones promocionales.
+  </Card>
+
+  <Card title="Storage y notificaciones" icon="cloud" href="/backend/modules/storage-notifications">
+    Azure Blob Storage, correo (Microsoft Graph), WhatsApp Cloud API, notificaciones programadas, retroalimentación y dashboard.
+  </Card>
+</CardGroup>
+
+## Convenciones por módulo
+
+Cada módulo respeta la arquitectura por capas obligatoria:
+
+- `*.controller.ts` expone los endpoints. Importa DTOs desde `./dto/`.
+- `*.service.ts` contiene la lógica de negocio y coordina repositorios e integraciones.
+- El repositorio (bajo `src/repositories/`) es la única capa que accede a PostgreSQL vía Drizzle ORM.
+- `*.module.ts` declara providers e imports.
+
+## Prefijos de ruta
+
+| Prefijo | Alcance | Ejemplos |
+| --- | --- | --- |
+| `/auth` | Sesión de usuario | `/auth/login`, `/auth/register`, `/auth/google/url` |
+| `/admin/*` | Usuarios autenticados (PYME, consultor) | `/admin/meeting`, `/admin/pyme`, `/admin/task` |
+| `/admin/backoffice/*` | Administradores internos | `/admin/backoffice/pyme`, `/admin/backoffice/meeting` |
+| `/public/consultant/*` | Consultas anónimas | `/public/consultant/find-all` |
+| `/storage/*` | Subida y descarga de archivos | `POST /storage`, `GET /storage/download-file` |

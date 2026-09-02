@@ -1,0 +1,83 @@
+---
+title: "Almacenamiento, correo y WhatsApp en Hubsme"
+sidebarTitle: "Storage y Notificaciones"
+description: "Módulos de almacenamiento en Azure Blob, envío de correo, notificaciones por WhatsApp Cloud API, retroalimentación de usuarios y métricas del dashboard."
+---
+
+Los módulos transversales agrupan integraciones y utilidades usadas por el resto del backend: almacenamiento de archivos en Azure Blob, envío de correo, notificaciones por WhatsApp con webhook firmado, retroalimentación de usuarios y métricas del dashboard.
+
+## Módulo `storage`
+
+Subida, descarga y eliminación de archivos en Azure Blob Storage.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `POST` | `/storage` | Subir un archivo y devolver su identificador público. |
+| `DELETE` | `/storage/:publicId` | Eliminar un archivo por su identificador. |
+| `GET` | `/storage/download-file` | Descargar un archivo por URL firmada. |
+
+<Tip>
+  Los archivos se organizan por contenedor y prefijo. Devuelve al frontend el `publicId` para poder recuperar la URL cuando se renderice la página.
+</Tip>
+
+## Módulo `admin/email`
+
+Envío de correo transaccional a través de Microsoft Graph o SMTP configurado.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `POST` | `/admin/email/send` | Enviar un correo (con o sin adjuntos). |
+
+## Módulo `admin/whatsapp`
+
+Notificaciones por WhatsApp Cloud API. El webhook requiere `rawBody` para validar la firma.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `POST` | `/admin/whatsapp/send` | Enviar un mensaje ad hoc. |
+| `POST` | `/admin/whatsapp/notificacion-pyme` | Notificación operativa a la PYME. |
+| `POST` | `/admin/whatsapp/notificacion-consultor` | Notificación operativa al consultor. |
+| `POST` | `/admin/whatsapp/notificacion-cancelacion-pyme` | Aviso de cancelación a la PYME. |
+| `POST` | `/admin/whatsapp/alerta-reunion-consultor` | Recordatorio próximo a la reunión para el consultor. |
+| `POST` | `/admin/whatsapp/alerta-reunion-pyme` | Recordatorio próximo a la reunión para la PYME. |
+| `POST` | `/admin/whatsapp/consultor-confirmar-reunion` | Solicitud de confirmación al consultor. |
+| `GET` | `/admin/whatsapp/webhook` | Handshake de verificación de Meta. |
+| `POST` | `/admin/whatsapp/webhook` | Recepción de eventos entrantes. |
+
+<Warning>
+  Cualquier middleware que reemplace el body parser debe preservar `rawBody`. Sin el buffer original, la verificación de firma del webhook falla.
+</Warning>
+
+## Módulo `admin/scheduled-notification`
+
+Cola interna de recordatorios y alertas asociados a reuniones y pagos. El proceso programado consulta las entradas listas para ejecución y las despacha por correo o WhatsApp según corresponda.
+
+## Módulo `admin/feedback`
+
+Retroalimentación de usuarios con adjuntos y respuestas del equipo interno.
+
+Endpoints para el usuario:
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/feedback/find-all` | Listar retroalimentaciones del usuario. |
+| `GET` | `/admin/feedback/find-one/:id` | Consultar una retroalimentación. |
+| `POST` | `/admin/feedback/create` | Crear una retroalimentación. |
+| `POST` | `/admin/feedback/reply/:id` | Responder al hilo. |
+
+Endpoints para el backoffice:
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/backoffice/feedback/find-all` | Listar todas las retroalimentaciones. |
+| `GET` | `/admin/backoffice/feedback/find-one/:id` | Consultar una retroalimentación. |
+| `PATCH` | `/admin/backoffice/feedback/status/:id` | Cambiar el estado. |
+| `POST` | `/admin/backoffice/feedback/reply/:id` | Responder desde soporte. |
+
+## Módulo `admin/dashboard`
+
+Resumen agregado para el panel del usuario.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/dashboard/summary` | Métricas resumen para el usuario autenticado. |

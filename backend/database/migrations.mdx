@@ -1,0 +1,78 @@
+---
+title: "Migraciones SQL manuales del backend Hubsme"
+sidebarTitle: "Migraciones"
+description: "Migraciones SQL versionadas del backend Hubsme organizadas por carpetas version_00X con archivos numerados; ejecución solo por humanos autorizados."
+---
+
+Las migraciones SQL viven bajo `src/db/migrations/version_00X/` y siguen el patrón `vXXX_XXX_<descripcion>.sql`. Cada versión agrupa cambios coherentes de dominio y se aplica manualmente sobre las bases de desarrollo, staging y producción.
+
+<Warning>
+  La IA no ejecuta `db:reset`, `db:create`, `db:seed`, `db:migrate`, `db:backup` ni `db:restore`. Solo un humano autorizado aplica migraciones. En producción, un error de migración puede provocar pérdida de datos irreversible.
+</Warning>
+
+## Estructura y catálogo
+
+### version_002
+
+- `v002_001_add_consultant_owner_phone.sql`
+- `v002_002_add_consultant_profile_fields.sql`
+
+### version_003
+
+- `v003_001_create_subscription_plan_table.sql`
+- `v003_002_set_all_subscriptions_to_free.sql`
+- `v003_003_create_payments_table.sql`
+- `v003_004_create_promotion_codes.sql`
+- `v003_005_add_consultant_diagnostic_areas.sql`
+- `v003_006_create_scheduled_notifications.sql`
+
+### version_004
+
+- `v004_001_add_meeting_proposed_start_times.sql`
+
+### version_005
+
+- `v005_001_replace_consultant_identity_with_consultant_fields.sql`
+- `v005_002_create_feedback_tables.sql`
+
+### version_006
+
+- `v006_001_create_service_request_table.sql`
+- `v006_002_link_service_request_payments.sql`
+- `v006_003_convert_consultant_work_modality_to_enum.sql`
+- `v006_004_add_promotion_code_permissions_and_meeting_cancellation.sql`
+- `v006_005_cleanup_legacy_tables_and_rename_checkout.sql`
+- `v006_006_expand_service_request_requirements.sql`
+- `v006_007_add_service_meeting_scheduling.sql`
+
+### version_007
+
+- `v007_001_add_service_evidence_attachments.sql`
+- `v007_002_add_service_completed_status.sql`
+- `v007_003_add_service_completed_at.sql`
+- `v007_004_add_service_request_payment_plan.sql`
+- `v007_005_add_promotion_code_type.sql`
+- `v007_006_create_consultant_service_offer.sql`
+- `v007_007_link_tasks_to_service_requests.sql`
+- `v007_008_add_consultant_minimum_booking_notice.sql`
+
+### version_008
+
+- `v008_001_remove_meeting_payment_pending_status.sql`
+
+### version_009 y version_010
+
+Cambios operativos posteriores (payouts, historial de reprogramaciones y campos de servicios). Revisa los archivos SQL directamente en el repositorio.
+
+## Herramientas de apoyo
+
+- `npm run db:studio` abre Drizzle Studio con la conexión configurada por variables de entorno para explorar el schema.
+- `drizzle-kit` puede generar migraciones desde los archivos `.table.ts`, pero en Hubsme las migraciones se editan a mano para mantener control fino sobre orden y compatibilidad con datos existentes.
+
+<Note>
+  Antes de aplicar una nueva versión, respalda la base afectada. Registra en el issue asociado la fecha, el operador y la salida `psql` como evidencia.
+</Note>
+
+<Tip>
+  Los cambios de columna que requieren backfill se dividen en dos migraciones: la que altera el esquema y la que actualiza filas existentes.
+</Tip>

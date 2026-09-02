@@ -1,0 +1,66 @@
+---
+title: "Autenticación y usuarios del backend Hubsme"
+sidebarTitle: "Auth y Usuarios"
+description: "Módulos de autenticación JWT, backoffice administrativo, gestión de usuarios y verificación de identidad DNI y RUC del backend Hubsme."
+---
+
+Los módulos de identidad manejan el registro, la autenticación y la verificación de personas y empresas peruanas. La sesión pública se emite bajo `/auth`, la sesión administrativa bajo `/admin/auth`, el CRUD interno de usuarios bajo `/admin/user` y la verificación de DNI/RUC bajo `/admin/identity-verification`.
+
+## Módulo `auth`
+
+Autenticación pública para PYMES y consultores. Emite JWT con `AuthService` y expone los flujos de invitación de equipo y OAuth de Google.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `POST` | `/auth/login` | Iniciar sesión con correo y contraseña. |
+| `POST` | `/auth/register` | Crear una cuenta nueva. |
+| `GET` | `/auth/invitation` | Consultar el detalle de una invitación pendiente. |
+| `POST` | `/auth/invitation/accept` | Aceptar una invitación y quedar unido a la organización. |
+| `GET` | `/auth/google/url` | Obtener la URL de OAuth de Google para iniciar sesión. |
+| `GET` | `/auth/google/callback` | Callback de OAuth de Google. |
+| `GET` | `/auth/profile` | Devolver el perfil del usuario autenticado. |
+| `POST` | `/auth/forgot-password` | Enviar el correo de recuperación de contraseña. |
+| `POST` | `/auth/reset-password` | Restablecer la contraseña con el token recibido. |
+
+<Note>
+  Las invitaciones aceptadas se validan contra el hash SHA-256 del token almacenado en `pyme_invitation` y expiran a los 7 días.
+</Note>
+
+## Módulo `admin/admin-auth`
+
+Autenticación separada para el equipo interno que administra la plataforma desde el backoffice.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `POST` | `/admin/auth/login` | Iniciar sesión como administrador del backoffice. |
+
+## Módulo `admin/user`
+
+CRUD administrativo de cuentas de usuario. Se usa desde el frontend admin de la PYME y el backoffice.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/user/find-all` | Listar usuarios. |
+| `GET` | `/admin/user/find-one/:id` | Consultar un usuario por ID. |
+| `POST` | `/admin/user/create` | Crear un usuario. |
+| `PATCH` | `/admin/user/update/:id` | Actualizar datos del usuario. |
+| `DELETE` | `/admin/user/delete/:id` | Eliminar un usuario. |
+
+## Módulo `admin/identity-verification`
+
+Verificación de identidad contra fuentes peruanas. Se usa durante la creación de la cuenta y en la aprobación de consultores.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `POST` | `/admin/identity-verification/dni` | Validar un DNI y devolver el titular. |
+| `POST` | `/admin/identity-verification/ruc` | Validar un RUC y devolver la razón social. |
+
+## Roles y alcance
+
+- `pyme`: usuario titular o miembro de una empresa. Su acceso se limita al `pymeId` resuelto en runtime.
+- `consultor`: profesional registrado. Su acceso se limita a las reuniones, servicios y documentos donde participa.
+- Administrador de backoffice: valida contra `admin/admin-auth`, accede a los endpoints bajo `/admin/backoffice/*`.
+
+<Tip>
+  El backend nunca confía en el `pymeId` que envía el navegador. La estrategia JWT resuelve la membresía activa desde `pyme_member` y con eso construye el alcance de la petición.
+</Tip>

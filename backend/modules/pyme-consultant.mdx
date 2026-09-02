@@ -1,0 +1,136 @@
+---
+title: "PYMES, consultores y servicios en Hubsme"
+sidebarTitle: "PYME y Consultores"
+description: "Gestión de empresas con membresías compartidas, consultores, disponibilidad, ofertas de servicio y solicitudes de trabajo en el backend Hubsme."
+---
+
+Los módulos de PYMES y consultores forman el núcleo comercial de la plataforma. Una PYME funciona como organización con varios miembros vinculados a través de `pyme_member`, y los consultores publican ofertas de servicio, exponen disponibilidad y reciben solicitudes.
+
+## Módulo `admin/pyme`
+
+Operaciones sobre empresas y su equipo. El propietario controla creación, edición y administración de miembros; los miembros tienen acceso de lectura en el MVP.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/pyme/find-all` | Listar PYMES visibles para el usuario. |
+| `GET` | `/admin/pyme/meeting-consultants` | Listar consultores con los que la PYME tiene reuniones. |
+| `GET` | `/admin/pyme/documents/meetings` | Listar actas de reunión de la organización. |
+| `GET` | `/admin/pyme/documents/diagnostics` | Listar documentos de diagnóstico. |
+| `GET` | `/admin/pyme/team` | Ver miembros e invitaciones pendientes. |
+| `POST` | `/admin/pyme/invitations` | Invitar un correo a la organización. |
+| `DELETE` | `/admin/pyme/invitations/:id` | Cancelar una invitación pendiente. |
+| `DELETE` | `/admin/pyme/members/:userId` | Remover a un miembro de la organización. |
+| `GET` | `/admin/pyme/find-one/:id` | Consultar una PYME. |
+| `GET` | `/admin/pyme/find-by-user/:userId` | Buscar la PYME de un usuario. |
+| `POST` | `/admin/pyme/create` | Crear una PYME. |
+| `PATCH` | `/admin/pyme/update/:id` | Actualizar datos de la PYME. |
+| `DELETE` | `/admin/pyme/delete/:id` | Eliminar la PYME. |
+
+<Info>
+  Las invitaciones vencen a los 7 días. La base guarda solo el hash SHA-256 del token. Si el invitado no tiene cuenta, el registro por invitación crea `app_user` y `pyme_member` sin crear otra fila `pyme` ni otra suscripción.
+</Info>
+
+También expone endpoints administrativos de backoffice:
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/backoffice/pyme/find-all` | Listar PYMES para el equipo interno. |
+| `GET` | `/admin/backoffice/pyme/find-one/:id` | Ver el detalle de una PYME. |
+
+## Módulo `admin/consultant`
+
+Perfil profesional del consultor, historial de reuniones y documentos generados.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/consultant/find-all` | Listar consultores. |
+| `GET` | `/admin/consultant/meeting-pymes` | Listar PYMES con las que tiene reuniones. |
+| `GET` | `/admin/consultant/documents/meetings` | Listar actas de sus reuniones. |
+| `GET` | `/admin/consultant/documents/diagnostics` | Listar diagnósticos donde participó. |
+| `GET` | `/admin/consultant/find-one/:id` | Consultar un consultor. |
+| `GET` | `/admin/consultant/find-by-user/:userId` | Buscar consultor por usuario. |
+| `POST` | `/admin/consultant/create` | Crear un consultor. |
+| `PATCH` | `/admin/consultant/update/:id` | Actualizar perfil. |
+| `PATCH` | `/admin/consultant/active/:id` | Activar o desactivar el perfil. |
+| `DELETE` | `/admin/consultant/delete/:id` | Eliminar consultor. |
+
+Backoffice sobre consultores:
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/backoffice/consultant/find-all` | Listar todos los consultores. |
+| `GET` | `/admin/backoffice/consultant/find-one/:id` | Ver el detalle del consultor. |
+| `GET` | `/admin/backoffice/consultant/mercado-pago/:id` | Ver el estado de Mercado Pago. |
+| `GET` | `/admin/backoffice/consultant/mercado-pago/:id/financial` | Reporte financiero del consultor. |
+| `GET` | `/admin/backoffice/consultant/mercado-pago/:id/financial/download` | Descargar el reporte financiero. |
+| `PATCH` | `/admin/backoffice/consultant/approve/:id` | Aprobar un consultor tras revisión. |
+| `PATCH` | `/admin/backoffice/consultant/active/:id` | Activar o desactivar. |
+| `DELETE` | `/admin/backoffice/consultant/delete/:id` | Eliminar consultor. |
+
+## Módulo `admin/consultant-availability`
+
+Configuración de horarios disponibles del consultor por día y por mes.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/consultant-availability/find-all` | Listar reglas de disponibilidad. |
+| `GET` | `/admin/consultant-availability/find-month` | Disponibilidad del mes actual del consultor autenticado. |
+| `GET` | `/admin/consultant-availability/visible-month` | Disponibilidad publicada visible para PYMES. |
+| `GET` | `/admin/consultant-availability/find-one/:id` | Consultar una regla. |
+| `POST` | `/admin/consultant-availability/create` | Crear una regla. |
+| `POST` | `/admin/consultant-availability/replace-month` | Reemplazar la disponibilidad de un mes. |
+| `PATCH` | `/admin/consultant-availability/update/:id` | Editar una regla. |
+| `DELETE` | `/admin/consultant-availability/delete/:id` | Eliminar una regla. |
+
+## Módulo `admin/consultant-google-calendar`
+
+Sincronización de disponibilidad con Google Calendar del consultor. Requiere OAuth explícito.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/consultant-google-calendar/auth-url` | Obtener la URL de autorización. |
+| `GET` | `/admin/consultant-google-calendar/callback` | Callback de OAuth. |
+| `GET` | `/admin/consultant-google-calendar/status` | Estado de la conexión. |
+| `GET` | `/admin/consultant-google-calendar/busy-month` | Bloques ocupados del mes desde Google Calendar. |
+| `DELETE` | `/admin/consultant-google-calendar/disconnect` | Revocar la conexión. |
+
+## Módulo `admin/consultant-service-offer`
+
+Catálogo de ofertas de servicio que publica cada consultor.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/service-offer/find-all` | Listar ofertas visibles para PYMES. |
+| `GET` | `/admin/service-offer/find-mine` | Listar ofertas propias del consultor. |
+| `GET` | `/admin/service-offer/find-one/:id` | Consultar una oferta. |
+| `POST` | `/admin/service-offer/create` | Publicar una oferta. |
+| `PATCH` | `/admin/service-offer/update/:id` | Editar una oferta. |
+| `PATCH` | `/admin/service-offer/active/:id` | Activar o desactivar una oferta. |
+| `DELETE` | `/admin/service-offer/delete/:id` | Eliminar una oferta. |
+
+## Módulo `admin/service-request`
+
+Ciclo de vida de una solicitud de servicio entre PYME y consultor, con hitos, evidencias y pagos escalonados.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/service/find-all` | Listar solicitudes visibles para el usuario. |
+| `GET` | `/admin/service/find-one/:id` | Consultar una solicitud. |
+| `POST` | `/admin/service/create` | Crear una solicitud desde la PYME. |
+| `POST` | `/admin/service/proposal/:id` | Enviar propuesta desde el consultor. |
+| `POST` | `/admin/service/decline/:id` | Rechazar una solicitud. |
+| `POST` | `/admin/service/:id/complete` | Marcar la solicitud como completada. |
+| `POST` | `/admin/service/:id/milestone-meeting` | Agendar una reunión asociada a un hito. |
+| `PATCH` | `/admin/service/:id/milestone/:index` | Actualizar un hito. |
+| `DELETE` | `/admin/service/:id/milestone/:index` | Eliminar un hito. |
+| `POST` | `/admin/service/:id/extra-milestone-meeting` | Agendar una reunión adicional fuera del plan. |
+| `POST` | `/admin/service/:id/evidence` | Adjuntar evidencia (archivo o enlace). |
+| `DELETE` | `/admin/service/:id/evidence/:attachmentId` | Eliminar una evidencia. |
+
+## Módulo `public/consultant`
+
+Consultas anónimas para el catálogo público de consultores.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/public/consultant/find-all` | Listar consultores publicados sin requerir sesión. |

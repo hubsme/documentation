@@ -1,0 +1,113 @@
+---
+title: "Diseño del sistema backend Hubsme"
+description: "Arquitectura por capas obligatoria del backend Hubsme con NestJS, controladores limpios, logica en servicios y unico acceso a base de datos en repositorios. Prefijos de ruta y flujo del request documentados."
+sidebarTitle: "Diseño"
+---
+
+El backend de Hubsme sigue una arquitectura por capas definida con NestJS. Cada modulo respeta una separacion estricta de responsabilidades: los controladores solo exponen rutas y DTOs, los servicios contienen toda la logica de negocio y los repositorios son la unica capa que interactua directamente con PostgreSQL a traves de Drizzle ORM.
+
+## Capas obligatorias
+
+<Steps>
+  <Step title="Controller">
+    Expone endpoints HTTP, aplica decoradores de NestJS (`@Get`, `@Post`, `@Patch`, `@Delete`), importa DTOs y delega la ejecucion al servicio correspondiente. No contiene logica de negocio ni consultas a base de datos.
+  </Step>
+  <Step title="Service">
+    Contiene toda la logica de negocio, validaciones de dominio, coordinacion entre repositorios e integraciones externas (Microsoft Graph, Mercado Pago, WhatsApp, etc.).
+  </Step>
+  <Step title="Repository">
+    Unica capa con acceso a la base de datos. Usa Drizzle ORM para construir consultas type-safe, aplicar filtros y paginar resultados. No contiene logica de negocio.
+  </Step>
+</Steps>
+
+## Prefijos de ruta
+
+Las rutas de la API se organizan en prefijos funcionales que permiten aplicar estrategias de autenticacion y autorizacion diferenciadas:
+
+| Prefijo | Proteccion | Proposito |
+| --- | --- | --- |
+| `/auth` | Publico (parcial) | Login, registro, recuperacion de contrasena, OAuth de Google y gestion de perfil. Algunos endpoints requieren JWT. |
+| `/admin/*` | JWT (`JwtAuthGuard`) | Operaciones de usuarios autenticados: reuniones, diagnosticos, pagos, tareas, perfil de consultor. |
+| `/admin/backoffice/*` | Admin JWT | CRUD de usuarios, aprobacion de consultores, metricas de dashboard, gestion de codigos promocionales y retroalimentaciones. |
+| `/public/*` | Publico | Catalogo de consultores y otros recursos accesibles sin autenticacion. |
+| `/storage/*` | Publico (descarga) | Subida y descarga de archivos almacenados en Azure Blob Storage. |
+
+## Flujo de un request
+
+<Steps>
+  <Step title="Request HTTP">
+    El cliente envia una peticion al puerto 6001. CORS esta habilitado globalmente para permitir comunicacion con aplicaciones frontend.
+  </Step>
+  <Step title="Body parser personalizado">
+    `main.ts` desactiva el body parser por defecto (`bodyParser: false`) para preservar el `rawBody` necesario en la verificacion de firmas del webhook de WhatsApp. Se aplican parsers de `json` y `urlencoded` con limite de 50 MB.
+  </Step>
+  <Step title="JwtAuthGuard">
+    Para rutas bajo `/admin/*`, el guard intercepta el request, extrae el token Bearer y delega a `JwtStrategy`, que valida el payload contra `JWT_SECRET` y resuelve el usuario con `pymeId` y `membershipRole`.
+  </Step>
+  <Step title="Controller">
+    El controlador recibe los parametros de ruta, query strings o body validados por class-validator, y delega la operacion al servicio.
+  </Step>
+  <Step title="Service">
+    El servicio ejecuta la logica de negocio, aplica reglas de dominio y utiliza uno o mas repositorios para persistir o recuperar datos.
+  </Step>
+  <Step title="Repository">
+    El repositorio traduce la solicitud del servicio en una consulta Drizzle ORM ejecutada sobre PostgreSQL y devuelve el resultado tipado.
+  </Step>
+</Steps>
+
+## Punto de entrada
+
+El archivo `src/main.ts` configura la aplicacion antes de iniciar el servidor:
+
+```typescript
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { setupSwagger } from '@core/swagger.core';
+import { setupTransformer } from '@core/transformer.core';
+import { json, urlencoded } from 'express';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: false,
+  });
+
+  app.use(
+    json({
+      limit: '50mb',
+      verify: (request, _response, buffer) => {
+        (request as WhatsappWebhookRequest).rawBody = Buffer.from(buffer);
+      },
+    }),
+  );
+  app.use(urlencoded({ limit: '50mb', extended: true }));
+
+  setupTransformer(app);
+  setupSwagger(app);
+  app.enableCors();
+
+  await app.listen(process.env.PORT || 6001);
+}
+bootstrap();
+```
+
+<Tip>
+  Swagger UI se expone en la ruta `/api`, permitiendo explorar y probar endpoints interactivamente.
+</Tip>
+
+## Alias de modulos
+
+Los alias de importacion mantienen el codigo organizado y facilitan la navegacion entre capas:
+
+| Alias | Directorio | Uso tipico |
+| --- | --- | --- |
+| `@core` | `src/core` | Configuracion de Swagger, transformadores y DTOs base |
+| `@modules` | `src/modules` | Modulos de dominio (auth, meeting, mercado-pago, etc.) |
+| `@services` | `src/services` | Servicios compartidos entre modulos |
+| `@repositories` | `src/repositories` | Acceso a datos con Drizzle ORM |
+| `@controllers` | `src/controllers` | Controladores compartidos |
+| `@db` | `src/db` | Tablas, migraciones y configuracion de base de datos |
+| `@functions` | `src/functions` | Funciones utilitarias (fechas, URLs, etc.) |
+| `@utils` | `src/utils` | Helpers generales |
+| `@config` | `src/config` | Variables de configuracion y entorno |
+| `@models` | `src/models` | Tipos y modelos compartidos |
+| `@seeds` | `src/seeds` | Datos de semilla para desarrollo |

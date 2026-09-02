@@ -1,0 +1,93 @@
+---
+title: "Stack tecnológico del backend Hubsme"
+description: "NestJS 11, TypeScript 5.7, Drizzle ORM 0.44 y PostgreSQL forman la base del backend Hubsme; se completa con JWT, Swagger, Azure Blob, Microsoft Graph, Google Gemini, Mercado Pago y WhatsApp Cloud API."
+sidebarTitle: "Stack"
+---
+
+El backend de Hubsme se ejecuta sobre un stack moderno de Node.js, disenado para ofrecer una API REST confiable, con tipado estricto y facil integracion con servicios de terceros. Todas las dependencias de produccion estan definidas en `package.json` y se ejecutan con Node.js >= 20 y npm >= 10.
+
+## Requisitos de entorno
+
+| Requisito | Version minima |
+| --- | --- |
+| Node.js | \>= 20.0.0 |
+| npm | \>= 10.0.0 |
+| PostgreSQL | 15+ |
+
+## Componentes principales
+
+<CardGroup cols={2}>
+  <Card title="Framework y lenguaje" icon="code">
+    **NestJS 11** (`@nestjs/common` ^11.0.17) como framework principal con arquitectura modular y TypeScript 5.7.3 para tipado estricto.
+  </Card>
+
+  <Card title="ORM y base de datos" icon="database">
+    **Drizzle ORM 0.44.7** (`drizzle-orm`) con PostgreSQL (`pg` ^8.16.3). Drizzle Kit 0.31.6 para migraciones y studio de base de datos.
+  </Card>
+
+  <Card title="Autenticacion" icon="lock">
+    **JWT** con `@nestjs/jwt` ^11.0.2 y `passport-jwt` ^4.0.1 para autenticacion de tokens Bearer. Bcrypt ^6.0.0 para hash de contrasenas.
+  </Card>
+
+  <Card title="Validacion y documentacion" icon="file-code">
+    **Class-validator** ^0.14.2 y **class-transformer** ^0.5.1 para validacion de DTOs. **Swagger** (`@nestjs/swagger` ^11.2.1) con UI en `/api`.
+  </Card>
+</CardGroup>
+
+## Integraciones externas
+
+<CardGroup cols={2}>
+  <Card title="Microsoft Graph + Teams" icon="video">
+    `@microsoft/microsoft-graph-client` ^3.0.7 y `@azure/identity` ^4.13.1 para crear eventos de calendario con `onlineMeetingProvider: 'teamsForBusiness'`, grabaciones en OneDrive y transcripciones.
+  </Card>
+
+  <Card title="Azure Blob Storage" icon="cloud">
+    `@azure/storage-blob` ^12.31.0 para almacenamiento de archivos y documentos adjuntos del sistema.
+  </Card>
+
+  <Card title="Google Gemini" icon="sparkles">
+    `@google/genai` ^2.10.0 para diagnosticos empresariales, analisis de CVs de consultores y recomendaciones de emparejamiento servicio-consultor.
+  </Card>
+
+  <Card title="Mercado Pago" icon="credit-card">
+    Integracion con API de Mercado Pago para checkouts, pagos de servicios, webhooks de confirmacion y comisiones de plataforma.
+  </Card>
+
+  <Card title="WhatsApp Cloud API" icon="message-circle">
+    Recepcion y envio de mensajes por WhatsApp con verificacion de firmas HMAC SHA-256 y uso de `rawBody` para integridad del payload.
+  </Card>
+
+  <Card title="Google Calendar OAuth" icon="calendar">
+    Autenticacion y lectura de disponibilidad de Google Calendar para sincronizar con la agenda del consultor.
+  </Card>
+</CardGroup>
+
+## Herramientas de desarrollo
+
+| Herramienta | Version | Proposito |
+| --- | --- | --- |
+| `typescript` | ^5.7.3 | Compilacion y tipado estricto |
+| `ts-node` | ^10.9.2 | Ejecucion de scripts TypeScript sin compilar |
+| `tsconfig-paths` | ^4.2.0 | Resolucion de alias de modulos en tiempo de ejecucion |
+| `jest` | ^29.7.0 | Pruebas unitarias y cobertura |
+| `ts-jest` | ^29.2.5 | Transformador de TypeScript para Jest |
+| `eslint` | ^9.18.0 | Linting de codigo con Prettier |
+| `prettier` | ^3.4.2 | Formateo consistente |
+| `swagger-typescript-api` | ^13.2.16 | Generacion automatica de tipos desde OpenAPI |
+| `drizzle-kit` | ^0.31.6 | Migraciones y studio visual de base de datos |
+
+## Alias de importacion
+
+El proyecto usa alias de TypeScript configurados en `tsconfig.json` y reflejados en Jest para mantener rutas limpias y evitar imports relativos complejos:
+
+```typescript
+import { MeetingRepository } from '@repositories/meeting.repository';
+import { parseDateInPeru } from '@functions/date.function';
+import { JwtAuthGuard } from '@modules/auth/jwt-auth.guard';
+```
+
+Alias disponibles: `@core`, `@models`, `@db`, `@seeds`, `@modules`, `@controllers`, `@services`, `@repositories`, `@functions`, `@utils`, `@config`.
+
+<Info>
+  El puerto por defecto de la aplicacion es **6001**. La documentacion interactiva de la API esta disponible en `http://localhost:6001/api` gracias a Swagger UI.
+</Info>

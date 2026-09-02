@@ -1,0 +1,85 @@
+---
+title: "Pruebas del backend Hubsme con Jest y NestJS"
+sidebarTitle: "Pruebas"
+description: "Estrategia de pruebas del backend Hubsme con Jest, scripts npm, cobertura sobre src/modules y patrones recomendados con @nestjs/testing."
+---
+
+El backend usa Jest como framework de pruebas. Los scripts, el `testRegex` y el mapeo de alias se configuran en `package.json`, y la cobertura se calcula sobre `src/modules/**/*.ts`.
+
+## Scripts npm
+
+```bash Comandos de prueba
+npm run test          # Ejecuta la suite completa
+npm run test:watch    # Modo interactivo
+npm run test:cov      # Con cobertura
+npm run test:e2e      # Suite end-to-end
+npm run test:debug    # Con inspector de Node
+```
+
+- `testRegex`: `test/.*\.spec\.ts$`.
+- `moduleNameMapper`: replica los alias `@modules`, `@repositories`, `@services`, `@core`, `@db`, `@functions`, `@controllers`, `@config`, `@utils`, `@models` para que los tests usen los mismos imports que producción.
+- `collectCoverageFrom`: apunta a `src/modules/**/*.ts` para reflejar el código de dominio.
+
+## Convenciones recomendadas
+
+<CardGroup cols={2}>
+  <Card title="Unit tests" icon="cube">
+    Prueba servicios de negocio mockeando repositorios y clientes externos.
+  </Card>
+
+  <Card title="Controllers" icon="route">
+    Ejercita rutas con `@nestjs/testing` y `supertest` verificando guards, DTOs y respuestas.
+  </Card>
+
+  <Card title="Repositories" icon="database">
+    Prueba solo las consultas complejas contra una base de test aislada; el resto queda cubierto por tipos.
+  </Card>
+
+  <Card title="Integraciones" icon="plug">
+    Mockea Microsoft Graph, Mercado Pago, Gemini y WhatsApp. Nunca golpea servicios reales en CI.
+  </Card>
+</CardGroup>
+
+## Patrón con `@nestjs/testing`
+
+```typescript meeting.service.spec.ts
+import { Test } from '@nestjs/testing';
+import { MeetingService } from '@modules/admin/meeting/meeting.service';
+import { MeetingRepository } from '@repositories/meeting.repository';
+
+describe('MeetingService', () => {
+  let service: MeetingService;
+  let repository: jest.Mocked<MeetingRepository>;
+
+  beforeEach(async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        MeetingService,
+        {
+          provide: MeetingRepository,
+          useValue: {
+            findById: jest.fn(),
+            create: jest.fn(),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get(MeetingService);
+    repository = module.get(MeetingRepository);
+  });
+
+  it('lanza si la reunión no existe', async () => {
+    repository.findById.mockResolvedValueOnce(null);
+    await expect(service.getById('id-inexistente')).rejects.toThrow();
+  });
+});
+```
+
+<Tip>
+  Cuando pruebes flujos que dependen de fechas, importa los helpers de `@functions/date.function` y no uses `new Date('YYYY-MM-DD')` para representar fechas peruanas.
+</Tip>
+
+<Warning>
+  Los tests no deben ejecutar migraciones ni tocar bases de datos productivas. Usa una base efímera y limpia entre suites.
+</Warning>

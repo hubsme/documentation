@@ -1,0 +1,112 @@
+---
+title: "Instalación y variables de entorno del backend Hubsme"
+sidebarTitle: "Instalación"
+description: "Requisitos, instalación local del backend Hubsme con NestJS y guía completa de variables de entorno para autenticación, integraciones y pagos."
+---
+
+El backend requiere Node.js 20 o superior y npm 10 o superior. Todas las integraciones se configuran mediante variables de entorno.
+
+## Requisitos
+
+- Node.js `>= 20`
+- npm `>= 10`
+- PostgreSQL accesible desde el entorno de ejecución
+- Credenciales de Microsoft Graph, Azure Blob, Google Gemini, Mercado Pago y WhatsApp Cloud API para todas las funcionalidades
+
+## Instalación local
+
+<Steps>
+  <Step title="Clonar el repositorio">
+    Clona el repositorio del backend en tu máquina local.
+
+    ```bash
+    git clone git@github.com:hubsme/back-hubsme.git
+    cd back-hubsme
+    ```
+  </Step>
+  <Step title="Instalar dependencias">
+    ```bash
+    npm install
+    ```
+  </Step>
+  <Step title="Configurar variables de entorno">
+    Crea un archivo `.env` en la raíz con las variables listadas más abajo.
+  </Step>
+  <Step title="Iniciar en modo desarrollo">
+    ```bash
+    npm run start:dev
+    ```
+
+    El servidor queda disponible en `http://localhost:6001` y Swagger UI en `http://localhost:6001/api`.
+  </Step>
+</Steps>
+
+## Variables de entorno
+
+```bash Archivo .env
+# Servidor
+PORT=6001
+NODE_ENV=development
+
+# Base de datos
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=hubsme
+DB_PASSWORD=secreto
+DB_NAME=hubsme
+
+# Autenticación
+JWT_SECRET=cambia-esto
+JWT_EXPIRES_IN=7d
+
+# Microsoft Graph (Teams calendar-backed)
+TEAMS_MEETINGS_ENABLED=true
+MS_GRAPH_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+MS_GRAPH_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+MS_GRAPH_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+MS_GRAPH_TEAMS_ORGANIZER_USER_ID=organizador@empresa.onmicrosoft.com
+
+# Azure Blob Storage
+AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=...
+AZURE_STORAGE_CONTAINER=documents
+
+# Google Gemini
+GEMINI_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Google Calendar OAuth (consultores)
+GOOGLE_OAUTH_CLIENT_ID=xxxxxx.apps.googleusercontent.com
+GOOGLE_OAUTH_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxx
+GOOGLE_OAUTH_REDIRECT_URL=https://api.hubsme.example/admin/consultant-google-calendar/callback
+
+# Mercado Pago
+MERCADO_PAGO_CLIENT_ID=xxxxxxxxxxxxxxxx
+MERCADO_PAGO_CLIENT_SECRET=xxxxxxxxxxxxxxxx
+MERCADO_PAGO_PLATFORM_FEE_PERCENT=10
+MERCADO_PAGO_WEBHOOK_SECRET=xxxxxxxxxxxxxxxxxxxxxx
+
+# WhatsApp Cloud API
+WHATSAPP_TOKEN=xxxxxxxxxxxxxxxxxxxxxx
+WHATSAPP_PHONE_NUMBER_ID=xxxxxxxxxxxxxxx
+WHATSAPP_VERIFY_TOKEN=cambia-esto
+WHATSAPP_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxx
+```
+
+<Note>
+  Los nombres exactos y adicionales pueden variar por entorno. Confirma con el equipo de plataforma antes de desplegar.
+</Note>
+
+## Scripts útiles
+
+```bash Scripts npm
+npm run start:dev       # Desarrollo con recarga en caliente
+npm run start:prod      # Producción (requiere build previo)
+npm run build           # Compila con nest build
+npm run format          # Prettier
+npm run lint            # ESLint
+npm run generate:types  # Cliente tipado desde Swagger
+npm run db:studio       # Drizzle Studio
+```
+
+<Tip>
+  Ejecuta `npm run generate:types` cada vez que agregues o modifiques un DTO. El frontend consume el cliente resultante como fuente de verdad de la API.
+</Tip>

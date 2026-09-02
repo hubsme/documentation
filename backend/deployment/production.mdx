@@ -1,0 +1,52 @@
+---
+title: "Despliegue en producción del backend Hubsme"
+sidebarTitle: "Producción"
+description: "Construcción de la imagen Docker, comandos de arranque, puerto expuesto y consideraciones operativas para desplegar el backend Hubsme en producción."
+---
+
+El backend se distribuye como imagen Docker multi-stage basada en `node:20-alpine`. La imagen compila la aplicación con `nest build` y luego ejecuta el bundle desde `dist/`.
+
+## Comandos de compilación y arranque
+
+```bash Build y arranque
+npm run build         # nest build → dist/
+npm run start:prod    # node dist/src/main.js
+```
+
+El proceso escucha por defecto en el puerto `6001`. Configúralo con `PORT` si el orquestador lo requiere.
+
+## Dockerfile
+
+La imagen final se arma en dos etapas:
+
+1. Etapa de build: instala dependencias, ejecuta `npm run build` y produce `dist/`.
+2. Etapa de runtime: copia `dist/`, `package.json` y `node_modules` mínimos, expone `EXPOSE 6001` y ejecuta `CMD ["node", "dist/src/main.js"]`.
+
+<Tip>
+  Confirma la imagen exacta con `cat Dockerfile` en el repositorio antes de publicar cambios de infraestructura.
+</Tip>
+
+## Variables de entorno
+
+Todas las variables listadas en la página de instalación deben estar presentes en el entorno de producción, con valores distintos a los de desarrollo. En particular:
+
+- `JWT_SECRET` con entropía real y rotación programada.
+- `TEAMS_MEETINGS_ENABLED=true` solo cuando la configuración de Graph esté validada.
+- `MERCADO_PAGO_PLATFORM_FEE_PERCENT` alineado con el porcentaje contable acordado.
+- `WHATSAPP_APP_SECRET` para verificar la firma del webhook.
+
+<Warning>
+  Antes de reemplazar la imagen en producción, aplica las migraciones SQL nuevas manualmente. La aplicación no ejecuta migraciones automáticas.
+</Warning>
+
+## Terminación TLS y CORS
+
+- La terminación TLS se resuelve en el proxy o balanceador delante del contenedor. La app escucha en HTTP dentro de la red interna.
+- CORS está habilitado globalmente en `main.ts` con `app.enableCors()`. Si necesitas restringir orígenes, ajusta esa llamada.
+- El body parser está configurado con `limit: 50mb` y preserva `rawBody` para el webhook de WhatsApp.
+
+## Observabilidad y salud
+
+- Los logs se escriben a stdout con formato estructurado; enviarlos a la plataforma de logging del hosting.
+- Añade un `/health` en el ingress si el proveedor lo requiere; el backend expone `GET /` como respuesta simple del framework.
+- Configura reintentos y timeouts razonables para webhooks entrantes (Mercado Pago y WhatsApp), que se procesan de forma idempotente pero pueden generar carga adicional.

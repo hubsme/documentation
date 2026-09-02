@@ -1,0 +1,84 @@
+---
+title: "Pagos, cupones y suscripciones en Hubsme"
+sidebarTitle: "Pagos"
+description: "Integración con Mercado Pago con checkout Hubsme, obligaciones de pago a consultores, suscripciones a planes y códigos promocionales del backend Hubsme."
+---
+
+Los módulos de pagos administran el ciclo completo de cobro y pago a consultores. Todos los checkouts nuevos de consultoría se crean con `collection_destination = hubsme`: Mercado Pago cobra el importe completo en la cuenta de Hubsme y la comisión contable se calcula con `MERCADO_PAGO_PLATFORM_FEE_PERCENT`. El neto para el consultor se registra como obligación `meeting_consultant_payout` y el depósito real se hace fuera del sistema.
+
+## Módulo `admin/mercado-pago`
+
+Conexión OAuth de la cuenta del consultor, generación de checkouts y recepción del webhook.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/mercado-pago/auth-url` | URL de autorización OAuth para el consultor. |
+| `GET` | `/admin/mercado-pago/callback` | Callback OAuth que guarda `consultant_mercado_pago_account`. |
+| `GET` | `/admin/mercado-pago/status` | Estado de la conexión del consultor. |
+| `DELETE` | `/admin/mercado-pago/disconnect` | Revocar la conexión OAuth. |
+| `POST` | `/admin/mercado-pago/checkout` | Crear un checkout de consultoría con destino `hubsme`. |
+| `GET` | `/admin/mercado-pago/payments` | Listar pagos recientes. |
+| `GET` | `/admin/mercado-pago/payments/:id` | Consultar un pago por ID. |
+| `GET` | `/admin/mercado-pago/checkout/:id` | Consultar un checkout. |
+| `POST` | `/admin/mercado-pago/checkout/:id/payment` | Iniciar el pago de un checkout. |
+| `POST` | `/admin/mercado-pago/service/:id/payment` | Pagar un hito de servicio. |
+| `POST` | `/admin/mercado-pago/service/:id/payment/sync` | Sincronizar el estado de un pago de servicio. |
+| `POST` | `/admin/mercado-pago/webhook` | Recibir notificaciones de Mercado Pago. |
+
+### Cálculo del payout al consultor
+
+<Steps>
+  <Step title="Registrar el total cobrado">
+    `checkout.amount` guarda el importe cobrado por Mercado Pago con la cuenta de Hubsme.
+  </Step>
+  <Step title="Capturar la comisión real de Mercado Pago">
+    Se obtiene de `raw_payment.transaction_details.net_received_amount` (con `fee_details` como respaldo). Se persiste en `meeting_consultant_payout.mercado_pago_fee_amount` y `mercado_pago_fee_percent`.
+  </Step>
+  <Step title="Registrar la comisión contable de Hubsme">
+    `checkout.marketplace_fee` guarda el importe calculado con `MERCADO_PAGO_PLATFORM_FEE_PERCENT`.
+  </Step>
+  <Step title="Crear la obligación en estado `pending`">
+    El neto para el consultor es `net_received_amount - marketplace_fee`. La creación es idempotente.
+  </Step>
+  <Step title="Depositar y marcar como `paid`">
+    Un administrador ejecuta el depósito fuera del sistema y registra referencia, constancia PDF/imagen, fecha y responsable desde el backoffice.
+  </Step>
+</Steps>
+
+<Warning>
+  El cargo real de Mercado Pago no es un porcentaje fijo. Puede incluir comisión, IGV y un importe fijo según la configuración y el momento de liberación. Por eso se usa `net_received_amount` como fuente de verdad para cada operación.
+</Warning>
+
+<Note>
+  Los checkouts históricos de consultoría con `collection_destination = consultant` se conservan tal cual para no duplicar deudas ya liquidadas por el split anterior.
+</Note>
+
+## Módulo `admin/subscription`
+
+Suscripciones a los planes de la plataforma.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/subscription/plans` | Listar planes disponibles. |
+| `GET` | `/admin/subscription/find-all` | Listar suscripciones. |
+| `GET` | `/admin/subscription/find-one/:id` | Consultar una suscripción. |
+| `GET` | `/admin/subscription/find-by-user/:userId` | Suscripción activa de un usuario. |
+| `POST` | `/admin/subscription/upsert` | Crear o actualizar una suscripción. |
+| `POST` | `/admin/subscription/checkout` | Generar el checkout de un plan. |
+
+## Módulo `admin/promotion-code`
+
+Cupones de descuento y códigos de acceso. El endpoint público es el que canjea el cupón; el administrativo se usa desde backoffice.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `POST` | `/admin/promotion-code/redeem` | Canjear un cupón para una suscripción. |
+| `POST` | `/admin/promotion-code/redeem-service` | Canjear un cupón sobre un servicio. |
+| `GET` | `/admin/promotion-code/find-all` | Listar cupones desde backoffice. |
+| `GET` | `/admin/promotion-code/find-one/:id` | Consultar un cupón. |
+| `POST` | `/admin/promotion-code/create` | Crear un cupón. |
+| `PATCH` | `/admin/promotion-code/update/:id` | Editar un cupón. |
+
+<Info>
+  Los cupones no generan obligaciones monetarias hacia consultores. Los pagos de servicios usan su propio flujo escalonado por hitos.
+</Info>

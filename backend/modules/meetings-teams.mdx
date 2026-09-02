@@ -1,0 +1,91 @@
+---
+title: "Reuniones y Microsoft Teams en Hubsme"
+sidebarTitle: "Reuniones y Teams"
+description: "Ciclo de reuniones con integración calendar-backed de Microsoft Teams, grabaciones OneDrive, transcripciones, tareas de seguimiento y notificaciones programadas."
+---
+
+Las reuniones son el corazón operativo de Hubsme. El backend crea reuniones en el calendario del organizador de Microsoft 365, adjunta el `onlineMeeting` de Teams, guarda el `joinWebUrl`, programa notificaciones y consulta grabaciones y transcripciones para la IA.
+
+## Módulo `admin/meeting`
+
+Ciclo completo de la reunión desde la solicitud hasta el cierre. La creación real en Microsoft Graph ocurre al confirmar el horario.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/meeting/calendar` | Reuniones agrupadas para vista de calendario. |
+| `GET` | `/admin/meeting/find-all` | Listar reuniones del usuario autenticado. |
+| `GET` | `/admin/meeting/find-one/:id` | Consultar una reunión. |
+| `GET` | `/admin/meeting/access/:id` | Validar acceso y devolver `joinWebUrl`. |
+| `POST` | `/admin/meeting/create` | Crear una reunión con horarios propuestos. |
+| `POST` | `/admin/meeting/confirm/:id` | Confirmar una reunión. |
+| `POST` | `/admin/meeting/confirm-option/:id` | Confirmar seleccionando un horario propuesto. |
+| `GET` | `/admin/meeting/recordings/:id` | Listar grabaciones de OneDrive. |
+| `GET` | `/admin/meeting/hubsme-ai/:id` | Generar resumen y tareas con IA desde la transcripción. |
+| `PATCH` | `/admin/meeting/update/:id` | Actualizar campos de la reunión. |
+| `POST` | `/admin/meeting/cancel-by-consultant/:id` | Cancelar desde el consultor. |
+| `POST` | `/admin/meeting/finalize/:id` | Cerrar la reunión y disparar generación de acta. |
+| `DELETE` | `/admin/meeting/delete/:id` | Eliminar una reunión. |
+
+### Flujo calendar-backed de Teams
+
+<Steps>
+  <Step title="Crear evento en el calendario del organizador">
+    `POST /users/{organizerId}/calendar/events` con `isOnlineMeeting: true` y `onlineMeetingProvider: 'teamsForBusiness'`. El organizador es `MS_GRAPH_TEAMS_ORGANIZER_USER_ID`.
+  </Step>
+  <Step title="Resolver el onlineMeeting">
+    Graph devuelve el `joinWebUrl`. El backend busca el `onlineMeeting` por ese `joinWebUrl`.
+  </Step>
+  <Step title="Configurar grabación y presentadores">
+    `PATCH /users/{organizerId}/onlineMeetings/{meetingId}` con `recordAutomatically: true`, `meetingSpokenLanguageTag: 'es-ES'`, `allowedPresenters: 'everyone'` y `lobbyBypassSettings.scope: 'everyone'`.
+  </Step>
+  <Step title="Persistir en `meeting`">
+    Se guardan `teamsOnlineMeetingId` y `joinWebUrl` para consultas posteriores.
+  </Step>
+</Steps>
+
+<Warning>
+  No crear reuniones solo con `POST /users/{id}/onlineMeetings`. La API de grabaciones no las asocia si no están respaldadas por un evento de calendario, y `meeting/recordings` devuelve una lista vacía.
+</Warning>
+
+### Grabaciones y transcripciones
+
+- `GET /admin/meeting/recordings/:id` consulta `/users/{organizerId}/onlineMeetings/{onlineMeetingId}/recordings` y correlaciona con archivos de OneDrive bajo `/users/{organizerId}/drive/root:/Recordings:/children`.
+- `GET /admin/meeting/hubsme-ai/:id` descarga la transcripción WebVTT desde `/users/{organizerId}/onlineMeetings/{onlineMeetingId}/transcripts`, la limpia y la envía a Google Gemini para producir resumen y tareas.
+
+<Note>
+  `meetingSpokenLanguageTag: 'es-ES'` debe configurarse antes del inicio de la grabación. Si se cambia después, Teams no reconoce el español correctamente.
+</Note>
+
+### Backoffice de reuniones
+
+Endpoints administrativos internos para operación, pagos a consultores y trazabilidad.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/backoffice/meeting/payout/find-all` | Listar obligaciones de pago a consultores. |
+| `GET` | `/admin/backoffice/meeting/payout/:id/traceability` | Trazabilidad de un payout específico. |
+| `POST` | `/admin/backoffice/meeting/payout/:id/mark-paid` | Marcar el payout como pagado con evidencia. |
+| `GET` | `/admin/backoffice/meeting/find-all` | Listar todas las reuniones. |
+| `GET` | `/admin/backoffice/meeting/find-one/:id` | Ver el detalle. |
+| `GET` | `/admin/backoffice/meeting/recordings/:id` | Consultar grabaciones desde backoffice. |
+
+## Módulo `admin/task`
+
+Tareas de seguimiento creadas manualmente o generadas desde la IA tras cerrar una reunión.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/task/find-all` | Listar tareas visibles para el usuario. |
+| `GET` | `/admin/task/find-one/:id` | Consultar una tarea. |
+| `POST` | `/admin/task/create` | Crear una tarea. |
+| `PATCH` | `/admin/task/update/:id` | Editar el contenido. |
+| `PATCH` | `/admin/task/update-status/:id` | Cambiar el estado (pendiente, en curso, completada). |
+| `DELETE` | `/admin/task/delete/:id` | Eliminar la tarea. |
+
+## Módulo `admin/scheduled-notification`
+
+Registra los envíos pendientes de correo y WhatsApp asociados a una reunión (recordatorios, alertas de inicio, cancelaciones). Un job procesa la cola en la ventana configurada.
+
+## Historial de reprogramaciones
+
+La tabla `meeting_reschedule_history` registra cada cambio de horario. Se usa para trazabilidad y para reglas de negocio sobre reprogramaciones frecuentes.

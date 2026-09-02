@@ -1,0 +1,68 @@
+---
+title: "Diagnósticos e inteligencia artificial en Hubsme"
+sidebarTitle: "Diagnósticos e IA"
+description: "Diagnósticos empresariales, documentos derivados y funciones de Google Gemini para CV, chat de servicios, plan de pagos y match consultor-servicio."
+---
+
+Los módulos de diagnósticos y de IA implementan la propuesta de valor central de Hubsme: generar evaluaciones empresariales asistidas por IA, producir documentos derivados y automatizar tareas específicas como el análisis de CV o el matching de consultores. La IA se ejecuta contra Google Gemini a través de `@google/genai`.
+
+## Módulo `admin/diagnostic`
+
+Genera y administra los diagnósticos empresariales de una PYME.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/diagnostic/find-all` | Listar diagnósticos visibles para el usuario. |
+| `GET` | `/admin/diagnostic/find-one/:id` | Consultar un diagnóstico. |
+| `POST` | `/admin/diagnostic/generate` | Generar un nuevo diagnóstico con IA. |
+| `DELETE` | `/admin/diagnostic/delete/:id` | Eliminar un diagnóstico. |
+
+<Info>
+  El diagnóstico se apoya en el catálogo de áreas de diagnóstico del consultor (`consultant_diagnostic_areas`) para focalizar el análisis.
+</Info>
+
+## Módulo `admin/diagnostic-document`
+
+Los documentos derivados de un diagnóstico (reporte ejecutivo, plan de acción, presentación) se almacenan y consultan desde este módulo.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/admin/diagnostic-document/find-all` | Listar documentos visibles. |
+| `GET` | `/admin/diagnostic-document/find-one/:id` | Consultar un documento. |
+| `DELETE` | `/admin/diagnostic-document/delete/:id` | Eliminar un documento. |
+
+## Módulo `admin/ai`
+
+Funciones de IA especializadas. Todas se exponen bajo `/admin/ia`.
+
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `POST` | `/admin/ia/hubsme-ai` | Chat general del asistente Hubsme. |
+| `POST` | `/admin/ia/consultant-cv` | Analizar el CV de un consultor y extraer campos estructurados. |
+| `POST` | `/admin/ia/service-request-chat` | Asistir a la PYME durante la creación de una solicitud de servicio. |
+| `POST` | `/admin/ia/service-payment-plan` | Proponer un plan de pagos escalonado para un servicio. |
+| `POST` | `/admin/ia/service-consultant-matches` | Sugerir consultores compatibles con una solicitud. |
+
+## Casos de uso conectados
+
+<CardGroup cols={2}>
+  <Card title="Resumen de reunión" icon="microphone">
+    `GET /admin/meeting/hubsme-ai/:id` descarga la transcripción WebVTT desde Microsoft Graph, la limpia y genera un resumen y tareas.
+  </Card>
+
+  <Card title="Diagnóstico asistido" icon="brain">
+    `POST /admin/diagnostic/generate` construye el diagnóstico combinando respuestas del cuestionario, información de la PYME y análisis del consultor.
+  </Card>
+
+  <Card title="CV del consultor" icon="file-lines">
+    `POST /admin/ia/consultant-cv` extrae experiencia, especialidades y sectores directamente de un CV subido a Azure Blob.
+  </Card>
+
+  <Card title="Match de servicios" icon="link">
+    `POST /admin/ia/service-consultant-matches` sugiere consultores adecuados según la descripción de la solicitud.
+  </Card>
+</CardGroup>
+
+<Note>
+  Las funciones de IA requieren la variable de entorno con la API key de Gemini y pueden imponer límites de tokens. Diseña prompts idempotentes y registra el modelo usado para trazabilidad.
+</Note>

@@ -1,0 +1,93 @@
+---
+title: "Integraciones externas del backend Hubsme"
+sidebarTitle: "Integraciones"
+description: "Integraciones con Microsoft Graph, Azure Blob Storage, Google Gemini, Mercado Pago, WhatsApp Cloud API, Google Calendar y correo utilizadas por el backend Hubsme."
+---
+
+El backend integra varios proveedores externos para reuniones, almacenamiento, IA, pagos y notificaciones. Cada integración se aísla en su propio módulo y expone su configuración mediante variables de entorno.
+
+<CardGroup cols={2}>
+  <Card title="Microsoft Graph" icon="microsoft">
+    Teams calendar-backed, grabaciones y transcripciones.
+  </Card>
+
+  <Card title="Azure Blob Storage" icon="cloud">
+    Almacenamiento de archivos y documentos.
+  </Card>
+
+  <Card title="Google Gemini" icon="brain">
+    Diagnósticos, análisis de CV, chat y matching.
+  </Card>
+
+  <Card title="Mercado Pago" icon="credit-card">
+    OAuth de consultores, checkout Hubsme y webhook.
+  </Card>
+
+  <Card title="WhatsApp Cloud API" icon="whatsapp">
+    Notificaciones y webhook con validación de firma.
+  </Card>
+
+  <Card title="Google Calendar" icon="calendar">
+    OAuth del consultor para leer bloques ocupados.
+  </Card>
+</CardGroup>
+
+## Microsoft Graph (Teams)
+
+Crea reuniones respaldadas por el calendario del organizador, configura grabación automática y descarga transcripciones para la IA.
+
+Variables de entorno:
+
+- `TEAMS_MEETINGS_ENABLED`: interruptor global de la integración.
+- `MS_GRAPH_TENANT_ID`: tenant de Azure AD.
+- `MS_GRAPH_CLIENT_ID`, `MS_GRAPH_CLIENT_SECRET`: credenciales del app registration.
+- `MS_GRAPH_TEAMS_ORGANIZER_USER_ID`: usuario licenciado que actúa como organizador.
+
+## Azure Blob Storage
+
+Almacena documentos, evidencias y adjuntos. Se accede con `@azure/storage-blob`.
+
+Variables típicas:
+
+- Cadena de conexión o par cuenta/clave.
+- Nombres de contenedor por dominio (`documents`, `diagnostics`, `feedback`).
+
+## Google Gemini
+
+Motor de IA usado por el módulo `admin/ai` y por acciones puntuales de `admin/meeting` y `admin/diagnostic`. Se accede con `@google/genai`.
+
+Variable:
+
+- API key con permisos sobre los modelos configurados.
+
+## Mercado Pago
+
+Cobros de consultoría y pagos escalonados de servicios.
+
+Variables de entorno:
+
+- `MERCADO_PAGO_PLATFORM_FEE_PERCENT`: porcentaje de comisión contable de Hubsme.
+- Credenciales OAuth del app de marketplace.
+- `MERCADO_PAGO_WEBHOOK_SECRET` para validar el webhook si aplica.
+
+<Note>
+  Los checkouts de consultoría usan `collection_destination = hubsme`. El neto se calcula desde `net_received_amount` (real de Mercado Pago) menos la comisión contable de Hubsme.
+</Note>
+
+## WhatsApp Cloud API
+
+Envía notificaciones transaccionales y recibe respuestas vía webhook. El webhook exige `rawBody` para validar la firma HMAC.
+
+Variables típicas:
+
+- Token permanente del bot.
+- `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`.
+- Identificador del número emisor.
+
+## Google Calendar OAuth
+
+Permite al consultor conectar su calendario personal para exponer bloques ocupados. Cada consultor autoriza individualmente desde `/admin/consultant-google-calendar/auth-url`.
+
+## Correo
+
+Envío de correo transaccional con Microsoft Graph o SMTP configurado en `admin/email`. Se usa para recuperación de contraseña, invitaciones, confirmaciones de reunión y notificaciones a soporte.

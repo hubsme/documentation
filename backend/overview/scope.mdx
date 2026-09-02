@@ -1,3 +1,99 @@
 ---
-title: "scope"
+title: "Alcance del backend de Hubsme"
+description: "Domains funcionales del backend de Hubsme, conectando PYMES peruanas con consultores especializados mediante API REST, diagnósticos IA, reuniones Teams, tareas, documentos, suscripciones y pagos integrados."
+sidebarTitle: "Alcance"
 ---
+
+El backend de Hubsme es una API REST construida con NestJS que conecta PYMES peruanas con consultores especializados. Este documento describe los dominios funcionales que gestiona, los actores que interactuan con el sistema y los limites dentro de los que opera la plataforma.
+
+## Publico objetivo
+
+La API de Hubsme esta disenada para los siguientes perfiles:
+
+- **PYMES**: Empresas que buscan diagnosticos, consultorias y servicios especializados, gestionando su equipo y reuniones.
+- **Consultores**: Profesionales que ofrecen su expertise, gestionan su disponibilidad, reciben pagos y atienden reuniones virtuales.
+- **Adminsitradores de plataforma**: Operadores del backoffice que supervisan usuarios, aprobaciones, finanzas y retroalimentaciones.
+
+## Casos de uso principales
+
+<CardGroup cols={2}>
+  <Card title="Gestion de identidad y empresas" icon="building">
+    Registro y autenticacion de usuarios (PYME y consultor), membresias de equipo, invitaciones y verificacion de identidad por DNI/RUC.
+  </Card>
+
+  <Card title="Perfil del consultor" icon="user-tie">
+    Creacion de perfil profesional, ofertas de servicio, disponibilidad de calendario, integracion con Google Calendar y conexion a Mercado Pago.
+  </Card>
+
+  <Card title="Reuniones virtuales" icon="video">
+    Solicitud y confirmacion de reuniones, generacion automatica de enlaces de Microsoft Teams con grabacion, notificaciones programadas y acceso a grabaciones.
+  </Card>
+
+  <Card title="Diagnosticos con IA" icon="brain">
+    Generacion de diagnosticos empresariales impulsados por Google Gemini, almacenamiento de documentos y resumenes con Hubsme AI.
+  </Card>
+
+  <Card title="Pagos y suscripciones" icon="credit-card">
+    Checkouts de Mercado Pago para reuniones y servicios, comisiones de plataforma, pagos pendientes a consultores y gestion de planes de suscripcion.
+  </Card>
+
+  <Card title="Notificaciones" icon="message-circle">
+    Envio de alertas y recordatorios por WhatsApp Cloud API y correo electronico, incluyendo confirmaciones, cancelaciones y alertas de reunion.
+  </Card>
+
+  <Card title="Backoffice administrativo" icon="shield-check">
+    Supervision de usuarios, aprobacion de consultores, gestion de codigos promocionales, resumen de metricas y respuesta a retroalimentaciones.
+  </Card>
+
+  <Card title="Solicitudes de servicio y tareas" icon="clipboard-list">
+    Publicacion de solicitudes de servicio, propuestas de hitos, evidencias de avance y gestion de tareas asociadas a consultorias.
+  </Card>
+</CardGroup>
+
+## Dominios funcionales
+
+### Identidad (`auth`)
+
+Autenticacion de usuarios mediante JWT, login y registro por email, recuperacion de contrasena e inicio de sesion con Google OAuth.
+
+### Empresas (`pyme`)
+
+Creacion y edicion de perfiles de PYME, gestion de miembros del equipo, invitaciones por correo y administracion de documentos de reuniones y diagnosticos.
+
+### Consultores (`consultant`)
+
+Perfiles de consultores, catalogo publico, aprobacion por administradores, activacion de cuentas y conexion con Mercado Pago para cobros.
+
+### Reuniones (`meeting`)
+
+Flujo completo de reuniones virtuales: solicitud, propuesta de horarios, confirmacion, integracion con calendarios, generacion de enlaces Teams, grabaciones, transcripciones y reprogramacion.
+
+### Diagnosticos IA (`diagnostic`, `ai`)
+
+Generacion de diagnosticos empresariales con Google Gemini, almacenamiento de resultados, documentos adjuntos y funciones de copiloto AI para analisis de CVs y emparejamiento consultor-servicio.
+
+### Pagos (`mercado-pago`, `subscription`)
+
+Checkouts de Mercado Pago, cobro de comisiones de plataforma (`MERCADO_PAGO_PLATFORM_FEE_PERCENT`), pagos pendientes a consultores (`meeting_consultant_payout`), suscripciones a planes y sincronizacion de estados de pago.
+
+### Notificaciones (`whatsapp`, `email`, `scheduled-notification`)
+
+Mensajeria por WhatsApp Cloud API con verificacion de firmas, envio de correos transaccionales y cola de notificaciones programadas para recordatorios de reunion.
+
+### Backoffice (`admin-auth`, `user`, `dashboard`, `feedback`, `identity-verification`)
+
+Panel administrativo con autenticacion separada, gestion de usuarios, aprobaciones de consultores, verificaciones de identidad, codigos promocionales y resumen de metricas operativas.
+
+## Fuera de alcance
+
+Las siguientes funcionalidades no son responsabilidad del backend de Hubsme:
+
+- Interfaz de usuario web o movil (gestionada por aplicaciones frontend separadas).
+- Procesamiento de video en tiempo real o servidores de streaming propios (delegado a Microsoft Teams).
+- Almacenamiento de archivos persistente propio (delegado a Azure Blob Storage).
+- Pasarelas de pago distintas a Mercado Pago.
+- Procesamiento de lenguaje natural independiente de Google Gemini.
+
+<Note>
+  El backend expone todos los endpoints documentados en Swagger UI, disponible en `http://localhost:6001/api` en entorno local.
+</Note>

@@ -1,0 +1,183 @@
+{
+  "theme": "palm",
+  "name": "Hubsme",
+  "colors": {
+    "primary": "#2563EB",
+    "light": "#60A5FA",
+    "dark": "#1E3A8A"
+  },
+  "logo": {
+    "light": "/images/logo_light.avif",
+    "dark": "/images/logo_dark.png"
+  },
+  "favicon": {
+    "light": "/images/icono.png",
+    "dark": "/images/icono.png"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Backend",
+        "groups": [
+          {
+            "group": "1. Descripción General",
+            "pages": [
+              "backend/overview/scope",
+              "backend/overview/tech-stack"
+            ]
+          },
+          {
+            "group": "2. Arquitectura",
+            "pages": [
+              "backend/architecture/system-design",
+              "backend/architecture/data-flow"
+            ]
+          },
+          {
+            "group": "3. Módulos",
+            "pages": [
+              "backend/modules/overview",
+              "backend/modules/auth-users",
+              "backend/modules/pyme-consultant",
+              "backend/modules/meetings-teams",
+              "backend/modules/diagnostics-ai",
+              "backend/modules/payments-subscriptions",
+              "backend/modules/storage-notifications"
+            ]
+          },
+          {
+            "group": "4. API e Integraciones",
+            "pages": [
+              "backend/api/endpoints",
+              "backend/api/integrations"
+            ]
+          },
+          {
+            "group": "5. Base de Datos",
+            "pages": [
+              "backend/database/schema",
+              "backend/database/migrations"
+            ]
+          },
+          {
+            "group": "6. Configuración",
+            "pages": [
+              "backend/setup/installation"
+            ]
+          },
+          {
+            "group": "7. Despliegue",
+            "pages": [
+              "backend/deployment/production"
+            ]
+          },
+          {
+            "group": "8. Pruebas",
+            "pages": [
+              "backend/testing/overview"
+            ]
+          },
+          {
+            "group": "9. Soporte",
+            "pages": [
+              "backend/support/logs",
+              "backend/support/troubleshooting",
+              "backend/support/known-issues"
+            ]
+          },
+          {
+            "group": "10. Notas de Versión",
+            "pages": [
+              "backend/release-notes"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Frontend",
+        "groups": [
+          {
+            "group": "1. Descripción General",
+            "pages": [
+              "frontend/overview/scope",
+              "frontend/overview/tech-stack"
+            ]
+          },
+          {
+            "group": "2. Arquitectura",
+            "pages": [
+              "frontend/architecture/system-design",
+              "frontend/architecture/data-flow"
+            ]
+          },
+          {
+            "group": "3. Módulos",
+            "pages": [
+              "frontend/modules/overview",
+              "frontend/modules/landing-public",
+              "frontend/modules/admin-pyme",
+              "frontend/modules/admin-consultor",
+              "frontend/modules/backoffice"
+            ]
+          },
+          {
+            "group": "4. API e Integraciones",
+            "pages": [
+              "frontend/api/api-client",
+              "frontend/api/integrations"
+            ]
+          },
+          {
+            "group": "5. Estado Local",
+            "pages": [
+              "frontend/database/local-storage"
+            ]
+          },
+          {
+            "group": "6. Configuración",
+            "pages": [
+              "frontend/setup/installation"
+            ]
+          },
+          {
+            "group": "7. Despliegue",
+            "pages": [
+              "frontend/deployment/ssr"
+            ]
+          },
+          {
+            "group": "8. Pruebas",
+            "pages": [
+              "frontend/testing/overview"
+            ]
+          },
+          {
+            "group": "9. Soporte",
+            "pages": [
+              "frontend/support/logs",
+              "frontend/support/troubleshooting",
+              "frontend/support/known-issues"
+            ]
+          },
+          {
+            "group": "10. Notas de Versión",
+            "pages": [
+              "frontend/release-notes"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Inicio",
+        "groups": [
+          {
+            "group": "Introducción",
+            "pages": [
+              "index"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
