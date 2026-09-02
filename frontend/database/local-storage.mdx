@@ -1,0 +1,98 @@
+---
+title: "Estado local y persistencia del frontend"
+sidebarTitle: "Storage Local"
+description: "El frontend de Hubsme persiste sesiones en LocalStorage, usa IndexedDB con Dexie para caches locales y protege todo acceso a window durante el SSR."
+---
+
+El frontend de Hubsme no tiene base de datos propia. La persistencia se limita a dos mecanismos: LocalStorage para la sesion de usuario y IndexedDB (via Dexie) para datos locales y borradores. Todo acceso a APIs del navegador esta protegido contra el entorno servidor de SSR.
+
+## Sesion de usuario en LocalStorage
+
+`SessionService` almacena la sesion activa bajo la clave `user_session`. Incluye el token JWT, el usuario y la organizacion activa.
+
+```ts
+// src/services/session.service.ts (fragmento)
+setSession(data: ApiResponse<'auth', 'login'>): void {
+  if (isPlatformBrowser(this.platformId)) {
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+    this.session.set(data);
+  }
+}
+
+removeSession(): void {
+  if (isPlatformBrowser(this.platformId)) {
+    localStorage.removeItem(this.STORAGE_KEY);
+    this.session.set(null);
+  }
+}
+```
+
+## Sesion de backoffice
+
+`AdminSessionService` funciona de forma similar con la clave `admin_session`. Guarda el token y el rol `admin` para el acceso al panel de administracion.
+
+```ts
+// src/services/admin-session.service.ts (fragmento)
+setSession(response: AdminLoginResponseDto) {
+  const session: AdminSession = {
+    accessToken: response.accessToken,
+    user: { username: response.user.username, role: 'admin' },
+  };
+  this.session.set(session);
+  if (isPlatformBrowser(this.platformId)) {
+    localStorage.setItem(this.storageKey, JSON.stringify(session));
+  }
+}
+```
+
+## Restauracion de sesion en guards
+
+Los guards `authGuard` y `adminAuthGuard` llaman `restoreSession()` antes de evaluar el acceso. Si no hay sesion valida, redirigen al login conservando la URL de retorno.
+
+```ts
+// src/guards/auth.guard.ts (fragmento)
+export const authGuard: CanActivateFn = (route, state) => {
+  const sessionService = inject(SessionService);
+  const platformId = inject(PLATFORM_ID);
+
+  if (!isPlatformBrowser(platformId)) {
+    return true;
+  }
+
+  sessionService.restoreSession();
+
+  if (!sessionService.session()) {
+    return router.createUrlTree([buildPath(PATH.auth.signIn)], {
+      queryParams: { returnUrl: state.url },
+    });
+  }
+  // ...
+};
+```
+
+## IndexedDB con Dexie
+
+El proyecto incluye `dexie` como dependencia para manejar IndexedDB. Se usa para caches locales, borradores de formularios y soporte offline selectivo.
+
+<Info>
+  El uso de Dexie esta preparado en el proyecto pero los componentes deben verificar `isPlatformBrowser` antes de abrir conexiones a IndexedDB, ya que no existe en el entorno Node del SSR.
+</Info>
+
+## Proteccion contra SSR
+
+Cualquier servicio o componente que acceda a `window`, `localStorage`, `document` o `navigator` debe verificar el entorno de ejecucion.
+
+```ts
+import { isPlatformBrowser } from '@angular/common';
+import { inject, PLATFORM_ID } from '@angular/core';
+
+const platformId = inject(PLATFORM_ID);
+
+if (isPlatformBrowser(platformId)) {
+  // solo aqui se accede a APIs del navegador
+}
+```
+
+<Warning>
+  Omitir `isPlatformBrowser` provoca errores de `window is not defined` durante el renderizado en servidor. Verifica siempre antes de usar `localStorage`, `window.open`, `document.querySelector` o `Intl.DateTimeFormat` con zona horaria personalizada.
+</Warning>

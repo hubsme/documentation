@@ -1,0 +1,63 @@
+---
+title: "Alcance del frontend de Hubsme"
+sidebarTitle: "Alcance"
+description: "El frontend de Hubsme es una aplicacion Angular 20.3 SSR con Express que conecta a PYMES peruanas con consultores mediante diagnosticos IA, reuniones Teams, tareas y pagos."
+---
+
+El frontend de Hubsme es una aplicacion Angular 20.3 con Server-Side Rendering (SSR) mediante Express. Consume un backend NestJS a traves de un cliente API tipado generado automaticamente desde Swagger. La plataforma opera en la zona horaria de Peru (America/Lima, UTC-5) y conecta a PYMES con consultores especializados.
+
+## Areas funcionales
+
+La aplicacion se divide en cinco grandes areas, cada una con rutas y permisos especificos:
+
+<CardGroup cols={2}>
+  <Card title="Landing publica" icon="globe">
+    Pagina de marketing, politica de privacidad, terminos y condiciones, eliminacion de datos, y acceso a reuniones.
+  </Card>
+
+  <Card title="Diagnostico publico" icon="stethoscope">
+    Formulario de diagnostico empresarial con IA (Google Gemini) accesible sin autenticacion previa.
+  </Card>
+
+  <Card title="Admin PYME" icon="building">
+    Panel completo para empresas: dashboard, equipo, diagnosticos, consultores, reuniones, tareas, documentos y pagos.
+  </Card>
+
+  <Card title="Admin Consultor" icon="user-tie">
+    Panel para consultores: dashboard, perfil, PYMES asignadas, servicios, reuniones, tareas, ingresos y suscripcion.
+  </Card>
+
+  <Card title="Backoffice" icon="shield">
+    Panel de administracion de la plataforma con control de codigos promocionales, PYMES, consultores, reuniones y soporte.
+  </Card>
+</CardGroup>
+
+## Funcionalidades por rol
+
+### PYME
+
+- Realizar diagnosticos empresariales con IA
+- Buscar y contratar consultores
+- Agendar reuniones via Microsoft Teams
+- Gestionar tareas y documentos
+- Realizar pagos con Mercado Pago
+- Invitar miembros al equipo
+
+### Consultor
+
+- Gestionar disponibilidad de calendario
+- Ofrecer servicios especializados
+- Atender reuniones con PYMES
+- Registrar tareas y actas
+- Ver ingresos y suscripcion
+
+### Administrador de plataforma
+
+- Gestionar codigos promocionales
+- Supervisar PYMES y consultores
+- Monitorear reuniones
+- Atender tickets de soporte
+
+<Note>
+  El frontend usa `authGuard` para proteger rutas de PYME y consultor, y `adminAuthGuard` para el backoffice. La sesion se restaura desde `localStorage` mediante `SessionService` o `AdminSessionService`.
+</Note>

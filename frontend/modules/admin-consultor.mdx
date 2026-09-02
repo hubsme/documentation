@@ -1,0 +1,61 @@
+---
+title: "Panel de administracion del consultor"
+sidebarTitle: "Admin Consultor"
+description: "Panel para consultores en Hubsme: dashboard, perfil, PYMES, reuniones, servicios, tareas, documentos, suscripcion e ingresos."
+---
+
+El panel de administracion para consultores esta protegido por `authGuard` y `matchConsultor`. Se carga bajo la ruta `/admin/consultor/*` usando el mismo layout `Admin` que el panel PYME, pero con rutas y contenido especificos para el rol de consultor.
+
+## Rutas del modulo consultor
+
+Segun `src/app/app.routes.ts`, las rutas disponibles para el rol consultor son:
+
+| Ruta | Componente | Descripcion |
+| --- | --- | --- |
+| `/admin/consultor/dashboard` | `Dashboard` | Resumen con KPIs, reuniones proximas, tareas y graficos de ingresos |
+| `/admin/consultor/profile` | `Profile` | Perfil profesional, foto, especialidades y biografia |
+| `/admin/consultor/pymes` | `Pymes` | Listado de PYMES asignadas o atendidas |
+| `/admin/consultor/meetings` | `Meetings` | Reuniones programadas con PYMES |
+| `/admin/consultor/meetings/:id` | `MeetingDetail` | Detalle de una reunion con acceso a Teams |
+| `/admin/consultor/services` | `ConsultantServices` | Servicios ofrecidos y su estado |
+| `/admin/consultor/services/:id` | `ServiceDetail` | Detalle de un servicio especifico |
+| `/admin/consultor/tasks` | `Tasks` | Gestion de tareas asignadas por PYMES |
+| `/admin/consultor/documents` | `Documents` | Actas de reuniones y documentos de diagnostico |
+| `/admin/consultor/documents/:id` | `MeetingMinutesDetail` | Acta de una reunion especifica |
+| `/admin/consultor/documents/diagnostic/:id` | `DiagnosticDocumentDetail` | Documento de un diagnostico |
+| `/admin/consultor/subscription` | `Subscription` | Gestion de la suscripcion a la plataforma |
+| `/admin/consultor/income` | `Incomes` | Historial de ingresos y payouts |
+| `/admin/consultor/support` | `Support` | Centro de ayuda y tickets de soporte |
+
+## Dashboard del consultor
+
+El dashboard (`src/modules/admin/content/consultor/dashboard/dashboard.ts`) muestra metricas relevantes para el consultor:
+
+- KPIs de reuniones completadas, tareas pendientes y servicios activos
+- Graficos de ingresos mensuales con ApexCharts
+- Reuniones proximas con filtrado por estado (`solicitada`, `pendiente`, `confirmada`, `finalizada`)
+- Acceso rapido al calendario de disponibilidad
+
+## Gestion de disponibilidad
+
+Los consultores configuran su disponibilidad horaria y conectan su Google Calendar para sincronizar reuniones. Esto se gestiona desde el perfil y afecta directamente las opciones de horario que ven las PYMES al agendar.
+
+## Servicios y precios
+
+En `/admin/consultor/services`, el consultor define los servicios que ofrece con descripcion, duracion estimada y precio. Las PYMES pueden contratar estos servicios directamente desde el checkout con Mercado Pago.
+
+## Ingresos y payouts
+
+<CardGroup cols={2}>
+  <Card title="Historial de ingresos" icon="money-bill">
+    En `/admin/consultor/income` el consultor ve un desglose de sus ingresos por reunion, servicio y mes. Hubsme aplica una comision de plataforma configurable (`MERCADO_PAGO_PLATFORM_FEE_PERCENT`) y el resto es transferido al consultor.
+  </Card>
+
+  <Card title="Suscripcion" icon="credit-card">
+    En `/admin/consultor/subscription` el consultor gestiona su plan de suscripcion a Hubsme, incluyendo renovacion y metodo de pago.
+  </Card>
+</CardGroup>
+
+<Info>
+  Los componentes compartidos entre PYME y consultor (como `MeetingDetail`, `ServiceDetail`, `DiagnosticDocumentDetail` y `Support`) se encuentran en `src/modules/admin/content/shared/` y adaptan su comportamiento segun el rol del usuario.
+</Info>

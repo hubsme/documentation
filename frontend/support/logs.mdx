@@ -1,0 +1,69 @@
+---
+title: "Logs del frontend Hubsme"
+sidebarTitle: "Logs"
+description: "El frontend usa console en desarrollo, AlertService y ToastService para la UI, y stdout del proceso Node en SSR. Conoce las recomendaciones para evitar filtrar PII en produccion."
+---
+
+El frontend de Hubsme no tiene un sistema de logging centralizado propio. En desarrollo se usan las herramientas del navegador; en produccion, los errores de SSR salen por stdout del proceso Node y las notificaciones de usuario se manejan con servicios de UI.
+
+## Consola del navegador
+
+En desarrollo, `console.log`, `console.error` y `console.warn` son utiles para depurar componentes y servicios. El `SessionService`, por ejemplo, logua errores al parsear LocalStorage:
+
+```ts
+// src/services/session.service.ts
+private getSessionFromStorage(): ApiResponse<'auth', 'login'> | null {
+  try {
+    const data = localStorage.getItem(this.STORAGE_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch (error) {
+    console.error('Error parsing session data', error);
+    return null;
+  }
+}
+```
+
+## Notificaciones de UI
+
+`AlertService` y `ToastService` son los canales principales para comunicar eventos al usuario. Los componentes los inyectan para mostrar mensajes de exito, error o confirmacion.
+
+```ts
+import { ToastService } from '@service/toast.service';
+
+private toastService = inject(ToastService);
+
+this.toastService.success('Reunion confirmada');
+this.toastService.error('No se pudo guardar el cambio');
+```
+
+`AlertService` se usa para dialogos modales que requieren decision del usuario (confirmar eliminacion, por ejemplo).
+
+## Logs en SSR
+
+Durante el Server-Side Rendering, no existe `window` ni `localStorage`. Los errores de renderizado o de logica sincrona se emiten como logs del proceso Node:
+
+```bash
+npm run serve:ssr:front-hubsme
+# los errores aparecen en stdout/stderr del terminal
+```
+
+<Warning>
+  Nunca loguees datos personales (PII) como tokens, correos o documentos de identidad en produccion, ni en consola ni en telemetria externa.
+</Warning>
+
+## Recomendacion: integrar telemetria
+
+Para produccion, considera agregar un proveedor de telemetria como Azure Application Insights o Sentry. Integralo en `app.config.ts` como provedor global, usando `isPlatformBrowser` solo cuando sea necesario.
+
+```ts
+// Ejemplo conceptual
+if (isPlatformBrowser(platformId)) {
+  // inicializar Application Insights en el navegador
+} else {
+  // inicializar solo logs de servidor en Node
+}
+```
+
+<Info>
+  El proyecto ya incluye variables de entorno para PostHog (`NG_APP_POSTHOG_API_KEY` y `NG_APP_POSTHOG_API_HOST`). Puedes usarlas como punto de partida para analiticas y seguimiento de eventos.
+</Info>

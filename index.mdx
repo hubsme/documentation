@@ -1,0 +1,55 @@
+---
+title: "Documentación técnica de Hubsme"
+sidebarTitle: "Bienvenida"
+description: "Documentación técnica de Hubsme, la plataforma peruana que conecta PYMES con consultores mediante diagnósticos IA, reuniones Teams y pagos Mercado Pago."
+---
+
+Hubsme es una plataforma peruana que conecta pequeñas y medianas empresas (PYMES) con consultores especializados. La arquitectura combina un backend en NestJS con Drizzle ORM sobre PostgreSQL y un frontend en Angular 20 con SSR y Tailwind CSS. Esta documentación cubre la arquitectura, módulos, operación y despliegue de ambos componentes.
+
+<CardGroup cols={2}>
+  <Card title="Backend" icon="server" href="/backend/overview/scope">
+    API REST NestJS con Drizzle, JWT, Swagger e integraciones con Microsoft Graph, Google Gemini, Mercado Pago, WhatsApp Cloud API y Azure Blob Storage.
+  </Card>
+
+  <Card title="Frontend" icon="desktop" href="/frontend/overview/scope">
+    Aplicación Angular 20 con SSR, Tailwind CSS 4, cliente API generado desde Swagger y persistencia local con Dexie.
+  </Card>
+
+  <Card title="API REST" icon="code" href="/backend/api/endpoints">
+    Endpoints agrupados por prefijo (`/auth`, `/admin`, `/admin/backoffice`, `/public`, `/storage`) con Swagger UI en `/api`.
+  </Card>
+
+  <Card title="Despliegue" icon="rocket" href="/backend/deployment/production">
+    Backend con Dockerfile multi-stage sobre Node 20 y frontend con SSR (`serve:ssr:front-hubsme`).
+  </Card>
+</CardGroup>
+
+## Características principales
+
+- **Diagnósticos con IA**: Google Gemini analiza empresas, transcripciones y CVs para generar tareas y resúmenes.
+- **Reuniones Microsoft Teams**: creación calendar-backed con grabación automática y transcripción en `es-ES`.
+- **Pagos Mercado Pago**: checkout con `collection_destination = hubsme`, obligación `meeting_consultant_payout` y depósito manual al consultor.
+- **Notificaciones multicanal**: correo (Microsoft Graph), WhatsApp Cloud API y `scheduled-notification`.
+- **Zona horaria consistente**: toda la plataforma opera en `America/Lima` (UTC-5) con helpers compartidos en `src/functions/date.function.ts`.
+
+## Estructura de la documentación
+
+Cada proyecto sigue una guía de 10 capítulos: Alcance, Arquitectura, Módulos, API e Integraciones, Base de Datos, Configuración, Despliegue, Pruebas, Soporte y Notas de versión.
+
+<CardGroup cols={2}>
+  <Card title="Arquitectura backend" icon="layer-group" href="/backend/architecture/system-design">
+    Capas controller, service y repository con alias `@modules`, `@services`, `@repositories`.
+  </Card>
+
+  <Card title="Módulos backend" icon="cubes" href="/backend/modules/overview">
+    24 módulos NestJS agrupados por dominio.
+  </Card>
+
+  <Card title="Módulos frontend" icon="window" href="/frontend/modules/overview">
+    Landing, admin PYME, admin Consultor y Backoffice.
+  </Card>
+
+  <Card title="Base de datos" icon="database" href="/backend/database/schema">
+    Tablas Drizzle y migraciones SQL manuales (`version_002` a `version_010`).
+  </Card>
+</CardGroup>

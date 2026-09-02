@@ -1,0 +1,67 @@
+---
+title: "Panel de administracion PYME"
+sidebarTitle: "Admin PYME"
+description: "Panel completo para PYMES en Hubsme: dashboard, equipo, diagnosticos, consultores, reuniones, servicios, tareas, documentos, pagos y soporte."
+---
+
+El panel de administracion para PYMES esta protegido por `authGuard` y `matchPyme`. Se carga bajo la ruta `/admin/pyme/*` usando el layout compartido `Admin` (`src/modules/admin/admin.ts`) con navbar y sidebar.
+
+## Rutas del modulo PYME
+
+Segun `src/app/app.routes.ts`, las rutas disponibles para el rol PYME son:
+
+| Ruta | Componente | Descripcion |
+| --- | --- | --- |
+| `/admin/pyme/dashboard` | `Dashboard` | Resumen con KPIs, reuniones proximas, tareas pendientes y graficos |
+| `/admin/pyme/profile` | `Profile` | Peril de la empresa y datos de contacto |
+| `/admin/pyme/team` | `Team` | Gestion de miembros e invitaciones a la organizacion |
+| `/admin/pyme/diagnostics` | `Diagnostics` | Historial de diagnosticos empresariales |
+| `/admin/pyme/diagnostics/:id` | `DiagnosticDetail` | Detalle de un diagnostico con resultados de IA |
+| `/admin/pyme/consultants` | `Consultants` | Directorio de consultores disponibles |
+| `/admin/pyme/consultants/agendar/:id` | `ConsultantDetail` | Perfil del consultor con opcion de agendar |
+| `/admin/pyme/consultants/profile/:id` | `ConsultantProfile` | Perfil publico del consultor |
+| `/admin/pyme/consultants/checkout/:id` | `Checkout` | Pago del servicio via Mercado Pago |
+| `/admin/pyme/meetings` | `Meetings` | Listado de reuniones con consultores |
+| `/admin/pyme/meetings/:id` | `MeetingDetail` | Detalle de una reunion con acceso a Teams |
+| `/admin/pyme/services` | `PymeServices` | Servicios contratados y su estado |
+| `/admin/pyme/services/:id` | `ServiceDetail` | Detalle de un servicio especifico |
+| `/admin/pyme/tasks` | `Tasks` | Gestion de tareas asignadas |
+| `/admin/pyme/documents` | `Documents` | Actas de reuniones y documentos de diagnostico |
+| `/admin/pyme/documents/:id` | `MeetingMinutesDetail` | Acta de una reunion especifica |
+| `/admin/pyme/documents/diagnostic/:id` | `DiagnosticDocumentDetail` | Documento de un diagnostico |
+| `/admin/pyme/payments` | `PaymentHistory` | Historial de pagos y transacciones |
+| `/admin/pyme/support` | `Support` | Centro de ayuda y tickets de soporte |
+
+## Dashboard
+
+El dashboard (`src/modules/admin/content/pyme/dashboard/dashboard.ts`) muestra:
+
+- KPIs de reuniones, tareas y servicios
+- Graficos con ApexCharts
+- Reuniones proximas con filtrado por estado
+- Tareas con fecha limite
+
+## Consultores y agendamiento
+
+<Steps>
+  <Step title="Explorar consultores">
+    En `/admin/pyme/consultants` la PYME puede ver el directorio de consultores filtrados por especialidad y disponibilidad.
+  </Step>
+  <Step title="Ver perfil del consultor">
+    Navega a `/admin/pyme/consultants/agendar/:id` para ver detalles, calendario de disponibilidad y precios.
+  </Step>
+  <Step title="Realizar pago">
+    El checkout en `/admin/pyme/consultants/checkout/:id` integra Mercado Pago para procesar el pago del servicio.
+  </Step>
+</Steps>
+
+## Documentos
+
+Los documentos se organizan en dos tipos:
+
+- **Actas de reunion**: generadas automaticamente tras reuniones Teams con transcripciones
+- **Documentos de diagnostico**: informes generados por IA tras completar un diagnostico
+
+<Note>
+  Las fechas en todo el panel se muestran en zona horaria `America/Lima` (UTC-5) usando `formatInPeru` y el `DatePipe` global configurado en `es-PE`.
+</Note>

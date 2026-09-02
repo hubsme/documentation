@@ -1,0 +1,87 @@
+---
+title: "Notas de versión del backend Hubsme"
+sidebarTitle: "Release Notes"
+description: "Historial de versiones del backend Hubsme según las migraciones manuales de base de datos. Cada versión lista los cambios aplicados en orden cronológico descendente."
+---
+
+Este documento resume los cambios de cada versión del backend basándose en las migraciones SQL manuales ubicadas en `src/db/migrations/`. Las migraciones se aplican por humanos autorizados ejecutando el script de migración con la variable de entorno `DB_VERSION`.
+
+## Versión 10
+
+Archivos aplicados:
+
+- `v010_001_add_mercado_pago_fee_to_meeting_consultant_payout.sql` : registra la comisión real de Mercado Pago en la tabla de payouts a consultores, usando `net_received_amount` como fuente de verdad.
+- `v010_002_create_pyme_organization_membership.sql` : estructura la membresía de organización PYME, separando la relación usuario-PYME del modelo de suscripción.
+
+## Versión 9
+
+Archivos aplicados:
+
+- `v009_001_create_meeting_consultant_payout.sql` : crea la tabla `meeting_consultant_payout` para rastrear los pagos manuales que Hubsme realiza a los consultores tras completar una reunión.
+- `v009_002_create_meeting_reschedule_history.sql` : agrega la tabla `meeting_reschedule_history` para guardar el historial de cambios de fecha/hora de las reuniones, incluyendo cupones aplicados.
+
+## Versión 8
+
+Archivos aplicados:
+
+- `v008_001_remove_meeting_payment_pending_status.sql` : elimina el estado `payment_pending` del flujo de reuniones, simplificando la máquina de estados.
+
+## Versión 7
+
+Archivos aplicados:
+
+- `v007_001_add_service_evidence_attachments.sql` : permite adjuntar evidencias a las solicitudes de servicio.
+- `v007_002_add_service_completed_status.sql` : agrega el estado `completed` al ciclo de vida de una solicitud de servicio.
+- `v007_003_add_service_completed_at.sql` : registra la fecha y hora de finalización de una solicitud de servicio.
+- `v007_004_add_service_request_payment_plan.sql` : soporta planes de pago en las solicitudes de servicio.
+- `v007_005_add_promotion_code_type.sql` : clasifica los cupones (`promotion_code`) por tipo: `consultation` o `service`.
+- `v007_006_create_consultant_service_offer.sql` : crea la tabla `consultant_service_offer` para que los consultores publiquen ofertas de servicio estandarizadas.
+- `v007_007_link_tasks_to_service_requests.sql` : vincula las tareas a las solicitudes de servicio, no solo a reuniones.
+- `v007_008_add_consultant_minimum_booking_notice.sql` : permite configurar un tiempo mínimo de anticipación para que una PYME pueda agendar con un consultor.
+
+## Versión 6
+
+Archivos aplicados:
+
+- `v006_001_create_service_request_table.sql` : crea la tabla `service_request` para gestionar solicitudes de servicio extendidas.
+- `v006_002_link_service_request_payments.sql` : vincula los pagos a las solicitudes de servicio.
+- `v006_003_convert_consultant_work_modality_to_enum.sql` : cambia la modalidad de trabajo del consultor a un tipo enumerado.
+- `v006_004_add_promotion_code_permissions_and_meeting_cancellation.sql` : agrega permisos de cupones y estados de cancelación a las reuniones.
+- `v006_005_cleanup_legacy_tables_and_rename_checkout.sql` : elimina tablas obsoletas y renombra la tabla de pagos a `checkout`.
+- `v006_006_expand_service_request_requirements.sql` : amplía los campos de requisitos en las solicitudes de servicio.
+- `v006_007_add_service_meeting_scheduling.sql` : permite programar reuniones directamente desde una solicitud de servicio.
+
+## Versión 5
+
+Archivos aplicados:
+
+- `v005_001_replace_consultant_identity_with_consultant_fields.sql` : migra los datos de identidad del consultor a campos específicos en la tabla `consultant`.
+- `v005_002_create_feedback_tables.sql` : crea las tablas `feedback`, `feedback_reply` y `feedback_attachment` para el sistema de retroalimentación post-reunión.
+
+## Versión 4
+
+Archivos aplicados:
+
+- `v004_001_add_meeting_proposed_start_times.sql` : agrega soporte para múltiples horarios propuestos por el consultor cuando una PYME solicita una reunión.
+
+## Versión 3
+
+Archivos aplicados:
+
+- `v003_001_create_subscription_plan_table.sql` : crea la tabla `subscription_plan` para definir planes de membresía con precios y características.
+- `v003_002_set_all_subscriptions_to_free.sql` : asigna el plan gratuito a todas las suscripciones existentes.
+- `v003_003_create_payments_table.sql` : crea la primera tabla de pagos (posteriormente renombrada a `checkout` en v006).
+- `v003_004_create_promotion_codes.sql` : crea la tabla `promotion_code` para gestionar cupones de descuento.
+- `v003_005_add_consultant_diagnostic_areas.sql` : agrega campos de áreas de diagnóstico al perfil del consultor.
+- `v003_006_create_scheduled_notifications.sql` : crea la tabla `scheduled_notification` para notificaciones programadas por email y WhatsApp.
+
+## Versión 2
+
+Archivos aplicados:
+
+- `v002_001_add_consultant_owner_phone.sql` : agrega el campo `ownerPhone` a la tabla `consultant`.
+- `v002_002_add_consultant_profile_fields.sql` : amplía el perfil del consultor con campos adicionales de descripción y especialización.
+
+<Info>
+  Para aplicar una versión específica, ejecuta: `DB_VERSION=version_010 npx ts-node src/db/migrate.db.ts`. El script usa la tabla `migraciones_aplicadas` para saltar archivos ya procesados. En producción, solo humanos autorizados deben ejecutar migraciones.
+</Info>

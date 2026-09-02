@@ -1,0 +1,71 @@
+---
+title: "Stack tecnologico del frontend"
+sidebarTitle: "Stack"
+description: "Angular 20.3 con SSR, Tailwind CSS 4, RxJS, Dexie para estado offline, y librerias para graficos, calendario, PDF y editor enriquecido en el frontend de Hubsme."
+---
+
+El frontend de Hubsme esta construido sobre Angular 20.3 con Server-Side Rendering (SSR) y un conjunto de librerias modernas para la interfaz de usuario, visualizacion de datos y funcionalidades offline.
+
+<CardGroup cols={2}>
+  <Card title="Framework" icon="code">
+    **Angular 20.3** con `@angular/ssr` para SSR, `@angular/platform-server` y Express como servidor de renderizado. Standalone components en toda la aplicacion.
+  </Card>
+
+  <Card title="Estilos" icon="paintbrush">
+    **Tailwind CSS 4** con `@tailwindcss/postcss`. FontAwesome 7 para iconografia. Estilos globales en `src/styles.css`.
+  </Card>
+
+  <Card title="Configuracion" icon="gear">
+    **@ngx-env/builder** para variables de entorno con prefijo `NG_APP_*`. Puerto de desarrollo `6200`. TypeScript 5.9 con target ES2022.
+  </Card>
+
+  <Card title="HTTP y estado" icon="arrows-rotate">
+    **RxJS 7.8** para reactividad. Cliente API tipado generado con `swagger-typescript-api` desde el backend NestJS. Sin NgRx: estado manejado con signals de Angular.
+  </Card>
+
+  <Card title="Visualizacion" icon="chart-line">
+    **ApexCharts** + `ng-apexcharts` para graficos de dashboard. **angular-calendar** para disponibilidad de consultores. **ngx-quill** + Quill para editor enriquecido.
+  </Card>
+
+  <Card title="Offline y archivos" icon="wifi-slash">
+    **Dexie** (IndexedDB) para almacenamiento local y funcionalidad offline. **jsPDF** + `jspdf-autotable` para generacion de PDFs. **pdfjs-dist** para visualizacion de documentos.
+  </Card>
+
+  <Card title="Utilidades" icon="wrench">
+    **date-fns** para manipulacion de fechas. **marked** para renderizado de Markdown. **intl-tel-input** para telefonos internacionales. **sortablejs** para listas arrastrables.
+  </Card>
+
+  <Card title="Testing" icon="vial">
+    **Karma** + **Jasmine** para pruebas unitarias. Configuracion estandar de Angular CLI con `karma-chrome-launcher` y `karma-coverage`.
+  </Card>
+</CardGroup>
+
+## Variables de entorno
+
+El proyecto usa `@ngx-env/builder` para exponer variables al frontend:
+
+```typescript
+// src/environments/environment.ts
+export const environment = {
+  baseUrl: import.meta.env?.['NG_APP_BASE_URL'],
+  posthogApiKey: import.meta.env?.['NG_APP_POSTHOG_API_KEY'],
+  posthogApiHost: import.meta.env?.['NG_APP_POSTHOG_API_HOST'],
+  production: true
+};
+```
+
+<Info>
+  `NG_APP_BASE_URL` apunta al backend NestJS (por defecto en puerto `6001`). No uses variables de entorno sin el prefijo `NG_APP_` porque no seran expuestas al bundle.
+</Info>
+
+## Generacion del cliente API
+
+El cliente tipado `src/api/backend.api.ts` se regenera automaticamente desde el Swagger del backend:
+
+```bash
+npm run generate:types
+```
+
+<Warning>
+  Nunca edites manualmente `src/api/backend.api.ts`. Cualquier cambio en los DTOs o endpoints del backend requiere regenerar este archivo para mantener el tipado estricto.
+</Warning>

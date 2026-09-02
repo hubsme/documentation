@@ -1,0 +1,67 @@
+---
+title: "Instalacion y configuracion del frontend"
+sidebarTitle: "Instalacion"
+description: "Configura el entorno de desarrollo del frontend de Hubsme en Angular 20 con SSR. Clona, instala dependencias, define NG_APP_BASE_URL y levanta el servidor local en el puerto 6200."
+---
+
+El frontend de Hubsme esta construido con Angular 20.3, SSR y Tailwind CSS 4. Sigue estos pasos para levantar un entorno de desarrollo funcional en tu maquina local.
+
+<Steps>
+  <Step title="Clonar el repositorio">
+    ```bash
+    git clone <url-del-repo> front-hubsme
+    cd front-hubsme
+    ```
+  </Step>
+  <Step title="Instalar dependencias">
+    ```bash
+    npm install
+    ```
+  </Step>
+  <Step title="Configurar variables de entorno">
+    Crea un archivo `.env` en la raiz del proyecto con la URL del backend:
+
+    ```bash
+    NG_APP_BASE_URL=http://localhost:6001
+    ```
+
+    El frontend usa `@ngx-env/builder` para exponer variables `NG_APP_*` al codigo via `import.meta.env`.
+  </Step>
+  <Step title="Iniciar el servidor de desarrollo">
+    ```bash
+    npm start
+    ```
+
+    El servidor se levanta en `http://localhost:6200` y recarga automaticamente ante cambios.
+  </Step>
+</Steps>
+
+## Scripts disponibles
+
+| Comando | Descripcion |
+| --- | --- |
+| `npm start` | Servidor de desarrollo en puerto 6200 |
+| `npm run build` | Build de produccion (browser + server) y copia de `index.html` para SSR |
+| `npm run watch` | Build en modo desarrollo con observacion de cambios |
+| `npm test` | Ejecuta pruebas unitarias con Karma + Jasmine |
+| `npm run serve:ssr:front-hubsme` | Levanta el servidor SSR desde `dist/front-hubsme/server/server.mjs` |
+
+## Variables de entorno soportadas
+
+```ts
+// src/environments/environment.ts
+export const environment = {
+  baseUrl: import.meta.env?.['NG_APP_BASE_URL'],
+  posthogApiKey: import.meta.env?.['NG_APP_POSTHOG_API_KEY'],
+  posthogApiHost: import.meta.env?.['NG_APP_POSTHOG_API_HOST'],
+  production: true,
+};
+```
+
+<Note>
+  `NG_APP_BASE_URL` es obligatoria. Sin ella, las llamadas al backend fallaran. En desarrollo local apunta a `http://localhost:6001`.
+</Note>
+
+<Tip>
+  Para regenerar el cliente tipado tras cambios en la API del backend, ejecuta `npm run generate:types` en el repositorio del backend. Luego copia el archivo generado a `src/api/backend.api.ts`.
+</Tip>

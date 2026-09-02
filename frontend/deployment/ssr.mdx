@@ -1,0 +1,78 @@
+---
+title: "Despliegue del frontend con SSR"
+sidebarTitle: "Despliegue SSR"
+description: "El frontend de Hubsme usa Angular SSR con Express. Conoce el flujo de build, el arranque del servidor Node y las opciones de despliegue en Azure Static Web Apps o servidores propios."
+---
+
+El frontend de Hubsme usa Angular 20.3 con Server-Side Rendering (SSR). El build genera dos bundles: uno para el navegador y otro para el servidor Node. El despliegue puede hacerse en un servidor Node propio o en Azure Static Web Apps.
+
+## Build de produccion
+
+El comando `npm run build` compila ambos bundles y copia `index.csr.html` a `index.html` para garantizar que el SSR sirva el archivo correcto.
+
+```bash
+npm run build
+```
+
+Esto genera la siguiente estructura en `dist/front-hubsme/`:
+
+```text
+dist/front-hubsme/
+  browser/          # Assets estaticos, index.html
+  server/           # Bundle SSR (server.mjs)
+```
+
+## Arranque del servidor SSR
+
+Despues del build, inicia el servidor Express embebido con:
+
+```bash
+npm run serve:ssr:front-hubsme
+```
+
+Este comando ejecuta `node dist/front-hubsme/server/server.mjs`, que escucha en el puerto configurado por la plataforma de despliegue.
+
+<Warning>
+  Asegurate de que la variable `NG_APP_BASE_URL` este disponible en tiempo de build o runtime. Sin ella, las llamadas al backend fallaran en produccion.
+</Warning>
+
+## Despliegue en Azure Static Web Apps
+
+El proyecto incluye `src/staticwebapp.config.json` con la configuracion de fallback para SPA:
+
+```json
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/images/*.{png,jpg,gif}", "/css/*"]
+  },
+  "responseOverrides": {
+    "404": {
+      "rewrite": "/index.html"
+    }
+  }
+}
+```
+
+Este archivo permite desplegar el bundle estatico (`browser/`) en Azure Static Web Apps. Las rutas desconocidas redirigen a `index.html` para que Angular maneje el enrutamiento del lado del cliente.
+
+## Despliegue en servidor Node propio
+
+Para aprovechar el SSR completo (hidratacion, SEO y primer renderizado mas rapido), despliega el directorio `dist/front-hubsme/` completo en un servidor Node:
+
+```bash
+# Ejemplo con PM2
+pm2 start dist/front-hubsme/server/server.mjs --name hubsme-frontend
+```
+
+<Info>
+  El servidor SSR emite logs a stdout. En produccion, configura recoleccion de logs (por ejemplo Azure Application Insights o un agregador centralizado) para monitorear errores de renderizado.
+</Info>
+
+## Checklist de despliegue
+
+- [ ] `NG_APP_BASE_URL` apunta al backend correcto
+- [ ] El build finalizo sin errores de TypeScript
+- [ ] `index.html` existe en `dist/front-hubsme/browser/`
+- [ ] `server.mjs` existe en `dist/front-hubsme/server/`
+- [ ] Las variables de entorno estan disponibles en el entorno de ejecucion

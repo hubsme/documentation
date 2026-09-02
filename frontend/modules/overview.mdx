@@ -1,0 +1,33 @@
+---
+title: "Modulos del frontend Hubsme"
+sidebarTitle: "Vista General"
+description: "Los cinco grandes bloques funcionales del frontend de Hubsme: landing publica, diagnostico, admin PYME, admin consultor y backoffice de plataforma."
+---
+
+El frontend de Hubsme esta organizado en cinco bloques funcionales principales bajo `src/modules/`. Cada bloque agrupa rutas, componentes y servicios relacionados con un area especifica del producto.
+
+<CardGroup cols={2}>
+  <Card title="Landing y paginas publicas" icon="globe" href="/frontend/modules/landing-public">
+    Pagina de marketing, politica de privacidad, terminos y condiciones, eliminacion de datos y autenticacion (sign-in, sign-up, forgot-password).
+  </Card>
+
+  <Card title="Diagnostico y meeting-access" icon="stethoscope" href="/frontend/modules/landing-public">
+    Formulario de diagnostico empresarial con IA y pagina de acceso a reuniones de Microsoft Teams.
+  </Card>
+
+  <Card title="Admin PYME" icon="building" href="/frontend/modules/admin-pyme">
+    Panel completo para empresas: dashboard, perfil, equipo, diagnosticos, consultores, reuniones, servicios, tareas, documentos, pagos y soporte.
+  </Card>
+
+  <Card title="Admin Consultor" icon="user-tie" href="/frontend/modules/admin-consultor">
+    Panel para consultores: dashboard, perfil, PYMES, reuniones, servicios, tareas, documentos, suscripcion, ingresos y soporte.
+  </Card>
+
+  <Card title="Backoffice" icon="shield" href="/frontend/modules/backoffice">
+    Panel de administracion de la plataforma: codigos promocionales, PYMES, consultores, reuniones y soporte.
+  </Card>
+</CardGroup>
+
+<Note>
+  Los modulos `landing`, `policy-privacy`, `terms-conditions`, `data-deletion`, `diagnostic` y `meeting-access` son publicos y no requieren autenticacion (excepto `meeting-access` que usa `authGuard`). Los modulos `admin` y `backoffice` estan protegidos por guards.
+</Note>

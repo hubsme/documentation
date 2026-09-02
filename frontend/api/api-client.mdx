@@ -1,0 +1,108 @@
+---
+title: "Cliente tipado del backend en el frontend"
+sidebarTitle: "Cliente API"
+description: "El frontend de Hubsme consume la API a traves de un cliente generado desde Swagger. Aprende como se organizan los servicios de dominio y como regenerar los tipos tras cambios en el backend."
+---
+
+El frontend de Hubsme no llama endpoints directamente desde los componentes. En su lugar, usa un cliente tipado generado automaticamente desde el Swagger del backend, envuelto en servicios de dominio que inyectan la URL base y el token de sesion.
+
+## Cliente generado
+
+El archivo `src/api/backend.api.ts` se genera con `swagger-typescript-api` a partir del spec expuesto por el backend en `http://localhost:6001/api`. Contiene todas las interfaces DTO, parametros de query, cuerpos de peticion y respuestas tipadas.
+
+<Info>
+  Regenera el cliente cada vez que el backend cambie sus DTOs o rutas. El backend incluye el script `npm run generate:types` para producir este archivo.
+</Info>
+
+## Inyeccion de la URL base y autenticacion
+
+La URL del backend se configura con la variable de entorno `NG_APP_BASE_URL` (por defecto `http://localhost:6001`). El `HttpClient` del cliente API recibe esta URL y un `securityWorker` que lee el token desde `localStorage`.
+
+```ts
+// src/app/app.config.ts (fragmento)
+import { Api, HttpClient } from 'api/backend.api';
+import { environment } from '@environment/environment';
+
+new HttpClient({
+  baseUrl: environment.baseUrl,
+  securityWorker: async () => {
+    const session = localStorage.getItem('user_session');
+    if (session) {
+      const token = JSON.parse(session).accessToken;
+      return { headers: { Authorization: `Bearer ${token}` } };
+    }
+    return {};
+  },
+  customFetch: async (input, init) => {
+    const response = await fetch(input, init);
+    if (response.status === 401) {
+      // redirige a login
+    }
+    return response;
+  },
+});
+```
+
+## Servicios de dominio en `src/services/admin/`
+
+Cada modulo del backend tiene un servicio Angular correspondiente que encapsula el cliente tipado. Estos servicios se inyectan en los componentes.
+
+<CardGroup cols={2}>
+  <Card title="AI" href="/frontend/api/integrations">
+    Diagnostico con Gemini
+  </Card>
+
+  <Card title="Consultor" href="/frontend/api/integrations">
+    Perfil, disponibilidad, calendario Google y ofertas de servicio
+  </Card>
+
+  <Card title="Reuniones" href="/frontend/api/integrations">
+    Creacion, confirmacion, acceso a Teams y calendario
+  </Card>
+
+  <Card title="Mercado Pago" href="/frontend/api/integrations">
+    Checkout, pagos y conexion de cuenta
+  </Card>
+
+  <Card title="Tareas" href="/frontend/api/integrations">
+    CRUD de tareas vinculadas a reuniones
+  </Card>
+
+  <Card title="Suscripciones" href="/frontend/api/integrations">
+    Planes y pagos recurrentes
+  </Card>
+
+  <Card title="Diagnosticos" href="/frontend/api/integrations">
+    Resultados de IA, documentos y graficos
+  </Card>
+
+  <Card title="Usuarios y PYMEs" href="/frontend/api/integrations">
+    Perfil, membresia y equipo
+  </Card>
+</CardGroup>
+
+## Patron de uso
+
+Los componentes inyectan el servicio de dominio, no el cliente `Api` directamente. Esto mantiene los componentes desacoplados del formato de respuesta del backend.
+
+```ts
+import { Component, inject } from '@angular/core';
+import { MeetingService } from '@service/admin/meeting.service';
+
+@Component({
+  selector: 'app-meetings',
+  templateUrl: './meetings.html',
+})
+export class Meetings {
+  private meetingService = inject(MeetingService);
+
+  async loadMeetings() {
+    const meetings = await this.meetingService.findAll({ status: 'confirmed' });
+    // meetings ya es response.data
+  }
+}
+```
+
+<Warning>
+  No importes `Api` directamente en los componentes. Usa siempre el servicio de dominio correspondiente para mantener consistencia y facilitar pruebas unitarias.
+</Warning>

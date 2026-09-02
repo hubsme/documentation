@@ -1,0 +1,69 @@
+---
+title: "Landing y paginas publicas"
+sidebarTitle: "Landing y Publico"
+description: "Modulos publicos del frontend de Hubsme: landing de marketing, paginas legales, diagnostico empresarial con IA y acceso a reuniones de Teams."
+---
+
+Las paginas publicas de Hubsme estan disponibles sin autenticacion previa y sirven como punto de entrada para visitantes, PYMES potenciales y consultores. Estan definidas en `src/routes/path.route.ts` y mapeadas en `src/app/app.routes.ts`.
+
+## Rutas publicas
+
+Segun el archivo de rutas, las siguientes URLs son accesibles publicamente:
+
+| Ruta | Modulo | Descripcion |
+| --- | --- | --- |
+| `/` | `landing` | Pagina principal de marketing con informacion de la plataforma |
+| `/politicas-de-privacidad` | `policy-privacy` | Politica de privacidad de Hubsme |
+| `/terminos-y-condiciones` | `terms-conditions` | Terminos y condiciones del servicio |
+| `/eliminacion-de-datos` | `data-deletion` | Proceso de solicitud de eliminacion de datos personales |
+| `/diagnostico` | `diagnostic` | Formulario de diagnostico empresarial con IA (requiere auth) |
+| `/reuniones/:id` | `meeting-access` | Acceso a reunion de Microsoft Teams (requiere auth) |
+
+<Warning>
+  Aunque `/diagnostico` y `/reuniones/:id` son rutas publicas en el sentido de marketing, estan protegidas por `authGuard`. El usuario debe iniciar sesion para acceder a ellas.
+</Warning>
+
+## Landing page
+
+El modulo `landing` (`src/modules/landing/landing.ts`) es la pagina de inicio de Hubsme. Muestra informacion sobre la plataforma, como conecta PYMES peruanas con consultores especializados, y los servicios disponibles: diagnosticos IA, reuniones Teams, gestion de tareas y pagos con Mercado Pago.
+
+## Paginas legales
+
+<CardGroup cols={2}>
+  <Card title="Politica de privacidad" icon="file-shield">
+    Explica como Hubsme recopila, usa y protege los datos personales de los usuarios conforme a la normativa peruana.
+  </Card>
+
+  <Card title="Terminos y condiciones" icon="file-contract">
+    Define los terminos de uso del servicio, responsabilidades de PYMES, consultores y la plataforma.
+  </Card>
+
+  <Card title="Eliminacion de datos" icon="trash">
+    Proceso para que los usuarios soliciten la eliminacion completa de sus datos personales de la plataforma.
+  </Card>
+</CardGroup>
+
+## Diagnostico empresarial
+
+El modulo `diagnostic` (`src/modules/diagnostic/diagnostic.ts`) permite a las PYMES completar un formulario de diagnostico empresarial. El backend procesa las respuestas con Google Gemini y genera un informe con areas criticas y recomendaciones de consultores especializados. Los resultados se pueden descargar en PDF.
+
+## Acceso a reuniones
+
+El modulo `meeting-access` (`src/modules/meeting-access/meeting-access.ts`) gestiona el acceso a reuniones de Microsoft Teams. Cuando un usuario navega a `/reuniones/:id`, el frontend:
+
+1. Valida el ID de la reunion
+2. Llama al endpoint `GET /admin/meeting/access/:id`
+3. Si la reunion esta disponible, redirige a `joinWebUrl` via `window.location.replace`
+4. Si hay error (no encontrada, sin acceso, generico), muestra el estado correspondiente
+
+```typescript
+// meeting-access.ts
+if (access.status === 'available' && access.redirectUrl) {
+  this.redirecting.set(true);
+  window.location.replace(access.redirectUrl);
+}
+```
+
+<Info>
+  Las fechas mostradas en `meeting-access` se formatean con `formatInPeru` usando la zona horaria `America/Lima`.
+</Info>

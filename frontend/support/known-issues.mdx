@@ -1,0 +1,51 @@
+---
+title: "Incidencias conocidas del frontend"
+sidebarTitle: "Incidencias"
+description: "Limitaciones y comportamientos conocidos del frontend de Hubsme: una sola organizacion activa, miembros de PYME en modo lectura, redireccion externa a Teams, ausencia de e2e y zona horaria fija."
+---
+
+El frontend de Hubsme tiene comportamientos y limitaciones documentados que afectan tanto a desarrolladores como a usuarios finales. Conocerlos evita reportes duplicados y ayuda a tomar decisiones de diseno acordes a la plataforma.
+
+## 1. Una sola organizacion activa por usuario
+
+Cada usuario puede pertenecer a una unica organizacion activa (PYME o consultor) en un momento dado. El `SessionService` almacena la organizacion actual y no hay selector de organizacion en la interfaz. Si un usuario necesita cambiar de rol, debe cerrar sesion y usar otra cuenta.
+
+## 2. Miembros de PYME en modo lectura
+
+Una PYME puede tener multiples miembros (`owner` y `member`), pero solo el `owner` tiene permisos de escritura completos. Los miembros con rol `member` pueden ver reuniones, tareas y diagnosticos, pero no pueden:
+
+- Realizar pagos
+- Gestionar el equipo
+- Modificar la suscripcion
+
+El backend valida `membershipRole !== 'owner'` en endpoints sensibles como pagos, invitaciones y diagnosticos.
+
+## 3. No se embebe Microsoft Teams
+
+El frontend no usa iframe ni SDK de Teams. Cuando una reunion esta confirmada, el usuario es redirigido directamente al `redirectUrl` (joinWebUrl) mediante `window.location.replace()`. Esto significa que:
+
+- El usuario sale temporalmente del dominio de Hubsme
+- No hay controles de reunion dentro de la plataforma
+- Las grabaciones y transcripciones se recuperan despues via Microsoft Graph
+
+## 4. No hay pruebas end-to-end definidas
+
+El proyecto no incluye scripts ni configuracion para pruebas e2e (Cypress, Playwright, Protractor). El test runner disponible es Karma + Jasmine para pruebas unitarias. Si necesitas cobertura de flujos completos, deberas agregar una herramienta e2e como parte de tu pipeline de CI.
+
+## 5. Zona horaria fija: America/Lima
+
+Toda la logica de fechas del frontend esta hardcodeada a `America/Lima` (UTC-5). Los helpers en `src/functions/date.function.ts` asumen esta zona y no admiten configuracion dinamica.
+
+<Warning>
+  Cualquier uso directo de `Intl.DateTimeFormat` fuera de `date.function.ts` puede producir resultados inconsistentes. Usa siempre los helpers centralizados: `formatInPeru`, `peruDateOnlyToUtc`, `dateKeyInPeru`, `formatDateForDatetimeLocal`.
+</Warning>
+
+## Resumen de restricciones para desarrolladores
+
+| Restriccion | Impacto |
+| --- | --- |
+| Organizacion unica por sesion | No se puede alternar entre PYME y consultor sin logout |
+| PYME member solo lectura | La UI debe ocultar o deshabilitar botones de accion para `member` |
+| Teams via redireccion | No se puede mostrar estado de reunion en tiempo real dentro de Hubsme |
+| Sin e2e | Los flujos criticos deben probarse manualmente o agregar e2e externo |
+| Zona horaria fija | No soporta usuarios fuera de Peru sin modificacion de codigo |

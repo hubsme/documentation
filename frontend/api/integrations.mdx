@@ -1,0 +1,78 @@
+---
+title: "Integraciones externas del frontend"
+sidebarTitle: "Integraciones"
+description: "El frontend de Hubsme integra Microsoft Teams, Mercado Pago, Google Calendar y librerias especializadas para telefonia, graficos, PDF y edicion de texto enriquecido."
+---
+
+El frontend de Hubsme no opera de forma aislada. Se conecta a multiples servicios externos mediante redirecciones, popups OAuth y librerias de terceros que enriquecen la experiencia de usuario para PYMES y consultores.
+
+## Microsoft Teams
+
+Las reuniones se crean en el backend a traves de Microsoft Graph. El frontend no embebe Teams: redirige al usuario directamente al `joinWebUrl` devuelto por el backend.
+
+```ts
+// src/modules/meeting-access/meeting-access.ts
+if (access.status === 'available' && access.redirectUrl) {
+  window.location.replace(access.redirectUrl);
+}
+```
+
+<Note>
+  El componente `meeting-access` maneja la logica de redireccion. No se usa iframe ni SDK de Teams en el navegador.
+</Note>
+
+## Mercado Pago
+
+El frontend redirige al checkout devuelto por el backend. El componente `Checkout` obtiene `initPoint` o `sandboxInitPoint` y abre la URL de pago en un iframe seguro o en una nueva ventana segun la configuracion.
+
+```ts
+// src/modules/admin/content/pyme/consultants/content/checkout/checkout.ts
+paymentUrl = computed(
+  () => this.checkout()?.initPoint ?? this.checkout()?.sandboxInitPoint ?? null,
+);
+```
+
+## Google Calendar OAuth
+
+Los consultores conectan su calendario Google para bloquear disponibilidad. El frontend obtiene la URL de autorizacion desde `/consultant-google-calendar/auth-url` y abre un popup.
+
+```ts
+// src/services/admin/consultant-google-calendar.service.ts
+authUrl(query) {
+  return this.api.consultantGoogleCalendar
+    .consultantgooglecalendarAuthUrl(query)
+    .then((response) => response.data);
+}
+```
+
+## Librerias especializadas
+
+<CardGroup cols={2}>
+  <Card title="intl-tel-input" icon="phone">
+    Campo de telefono con banderas y validacion por pais. Usado en registro y perfil.
+  </Card>
+
+  <Card title="apexcharts + ng-apexcharts" icon="chart">
+    Graficos interactivos en dashboards y diagnosticos.
+  </Card>
+
+  <Card title="pdfjs-dist" icon="file">
+    Visualizacion de PDFs en el navegador, por ejemplo documentos de identidad.
+  </Card>
+
+  <Card title="jspdf + jspdf-autotable" icon="file-pdf">
+    Generacion de reportes y documentos descargables desde el frontend.
+  </Card>
+
+  <Card title="ngx-quill" icon="pen">
+    Editor de texto enriquecido para actas de reunion y documentos de diagnostico.
+  </Card>
+
+  <Card title="angular-calendar" icon="calendar">
+    Calendario mensual/semanal para gestion de disponibilidad y reuniones.
+  </Card>
+</CardGroup>
+
+<Warning>
+  Todas las librerias que acceden a `window` o `document` deben usarse dentro de `isPlatformBrowser(this.platformId)` para evitar errores durante el SSR.
+</Warning>

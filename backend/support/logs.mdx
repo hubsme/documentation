@@ -1,0 +1,106 @@
+---
+title: "Logs del backend Hubsme"
+sidebarTitle: "Logs"
+description: "Recomendaciones para registrar eventos en el backend NestJS de Hubsme: qué loguear, cómo evitar exponer secretos y buenas prácticas de observabilidad."
+---
+
+El backend de Hubsme usa el `Logger` nativo de NestJS. En producción, los mensajes se escriben en `stdout` y los recolecta el contenedor Docker. Esta guía describe qué eventos registrar, cómo asociar trazas a cada solicitud y qué datos nunca deben aparecer en los logs.
+
+## ¿Qué loguear?
+
+Estos son los eventos más importantes que ya registran los servicios del backend:
+
+| Evento | Ejemplo de mensaje | Nivel |
+| --- | --- | --- |
+| Inicio de notificaciones programadas | `Cola de notificaciones iniciada con N tarea(s) pendiente(s)` | `log` |
+| Creación de reunión Teams | `Reunión calendar-backed creada y configurada con grabación automática: {title}` | `log` |
+| Error de Graph al crear reunión | `Microsoft Graph calendar-backed Teams meeting creation failed: {error}` | `error` |
+| Error de credenciales WhatsApp | `WhatsApp credentials are not configured in environment variables` | `error` |
+| Envío de mensaje WhatsApp | `WhatsApp message sent to {phone}` | `log` |
+| Error de procesamiento de webhook WhatsApp | `Error procesando el webhook de WhatsApp: {mensaje}` | `error` |
+| Error de Mercado Pago en pago | `No se pudo completar el pago de consultoría del checkout {id}` | `error` |
+| Error de API Gemini | `Error al ejecutar prompt con Gemini: {mensaje}` | `error` |
+| Error de envío de email | `Error enviando correo con Microsoft Graph` | `error` |
+| Error de verificación de identidad | `Error connecting to PeruDevs {tipo} API` | `error` |
+| Advertencia de grabaciones OneDrive | `No se pudo listar la carpeta Recordings de OneDrive` | `warn` |
+| Reunión confirmada por WhatsApp | `Reunión {id} confirmada por WhatsApp` | `log` |
+| Webhook de WhatsApp con payload inválido | `No se pudo reconstruir el payload del webhook de WhatsApp` | `warn` |
+
+<Note>
+  Agrupa los logs por **correlation id** (o request id) para poder seguir una misma operación entre servicios. En NestJS puedes usar un `ClsService` de `nestjs-cls` o un middleware que genere un `x-request-id` al inicio de cada petición y lo incluya en el contexto del logger.
+</Note>
+
+## Estructura recomendada de un log
+
+```text
+[timestamp] [level] [correlation-id] [service] mensaje { datos_contextuales }
+```
+
+Ejemplo:
+
+```text
+2025-06-10T14:30:00-05:00 INFO req-42a1 meeting-service Reunión calendar-backed creada {"meetingId": 123, "consultantId": 5}
+```
+
+## Datos que NUNCA deben aparecer en los logs
+
+- Tokens JWT o de sesión (`Authorization: Bearer ...`).
+- Claves de API (`GEMINI_API_KEY`, `MERCADO_PAGO_ACCESS_TOKEN`, `MS_GRAPH_CLIENT_SECRET`).
+- Números de documento de identidad (DNI, CE, RUC).
+- Datos de tarjetas o información financiera sensible.
+- `rawBody` completo de webhooks de WhatsApp (solo registra el resultado de la validación de firma).
+- Contraseñas o hashes de contraseñas.
+
+<Warning>
+  El webhook de Mercado Pago recibe parámetros en la query string. Nunca registres el cuerpo completo de un pago si contiene datos sensibles del pagador.
+</Warning>
+
+## Buenas prácticas
+
+<Steps>
+  <Step title="Usa niveles apropiados">
+    - `log` para eventos de negocio exitosos (reunión creada, mensaje enviado).
+    - `warn` para situaciones recuperables (grabación no disponible todavía, payload inválido).
+    - `error` para fallos que requieren atención (excepciones no controladas, error de integración).
+  </Step>
+  <Step title="Incluye contexto mínimo">
+    Siempre que sea posible, adjunta IDs de entidad (`meetingId`, `checkoutId`, `userId`) en lugar de descripciones largas.
+  </Step>
+  <Step title="No logues en bucles intensivos">
+    Evita registrar cada iteración de un procesamiento masivo. Resume al final o usa un contador.
+  </Step>
+  <Step title="Mantén los logs en español o inglés de forma consistente">
+    El backend de Hubsme usa ambos idiomas mezclados. Para nuevos módulos, elige uno y manténlo.
+  </Step>
+</Steps>
+
+## Logs de integraciones externas
+
+### Microsoft Graph (Teams)
+
+Registra:
+
+- Resultado de la validación de `allowedOnlineMeetingProviders`.
+- Éxito o fallo de la creación del evento calendar-backed.
+- Resultado de la configuración de `recordAutomatically` y `meetingSpokenLanguageTag`.
+
+### Mercado Pago
+
+Registra:
+
+- Recepción del webhook (`topic=payment`, `paymentId`).
+- Resultado de la consulta del pago (`status`, `external_reference`).
+- Errores al crear o actualizar el `checkout`.
+
+### WhatsApp Cloud API
+
+Registra:
+
+- Éxito del envío de mensaje template (con el nombre del template).
+- Error de la API de Meta, incluyendo el código de estado.
+- Resultado de la validación de firma (`assertMetaSignature`).
+- Advertencia cuando el `rawBody` está vacío o incompleto.
+
+<Info>
+  Para depurar problemas de webhook de WhatsApp, verifica primero que el servidor Express está configurado con el middleware `verify` que popula `rawBody`. Sin eso, la validación de firma de Meta siempre falla.
+</Info>

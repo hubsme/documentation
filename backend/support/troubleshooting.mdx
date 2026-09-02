@@ -1,0 +1,91 @@
+---
+title: "Solución de problemas del backend"
+sidebarTitle: "Troubleshooting"
+description: "Tabla de diagnóstico rápido para los problemas más comunes del backend Hubsme: Teams, JWT, Mercado Pago, WhatsApp y migraciones de base de datos."
+---
+
+Esta página recopila los síntomas más frecuentes del backend de Hubsme, sus causas probables y las acciones recomendadas para resolverlos. Incluye tanto problemas de integraciones externas (Microsoft Teams, Mercado Pago, WhatsApp) como errores internos de autenticación y base de datos.
+
+## Microsoft Teams y Graph
+
+Estos problemas están basados en el flujo calendar-backed de Microsoft Graph documentado en el proyecto.
+
+| Síntoma | Causa probable | Solución |
+| --- | --- | --- |
+| `allowed=ninguno` (`allowedOnlineMeetingProviders` vacío) | El calendario del organizador no tiene Teams aprovisionado. | Verificar licencia de Teams, que el buzón sea `UserMailbox`, la integración Exchange-Teams y esperar la propagación de Microsoft 365. |
+| `default=teamsForBusiness` pero falla la creación | El valor predeterminado existe, pero `teamsForBusiness` no está en la lista de proveedores permitidos. | Confirmar en Outlook/Teams Calendar que la opción **Teams meeting** aparece al crear un evento. Si no, el aprovisionamiento sigue incompleto. |
+| Evento creado sin `joinUrl` | Graph no generó la reunión de Teams porque el calendario no autorizó `teamsForBusiness`. | Revisar `allowedOnlineMeetingProviders`, licencia y buzón. Reiniciar NestJS no corrige este estado. |
+| `recordings` devuelve lista vacía | La reunión fue creada con `POST /users/{id}/onlineMeetings` sin evento de calendario; o la grabación no se procesó; o la reunión expiró. | Usar siempre el flujo calendar-backed (`POST /users/{id}/calendar/events` con `isOnlineMeeting: true`). Revisar OneDrive del organizador. |
+| Grabación visible en Teams pero no en OneDrive | El organizador no tiene OneDrive for Business aprovisionado; o la política de almacenamiento bloquea la carga. | Verificar OneDrive del organizador y las políticas de compartición del tenant. |
+| Transcripción en inglés en lugar de español | El idioma hablado no se configuró antes de iniciar la grabación. | Crear reuniones nuevas con `meetingSpokenLanguageTag: 'es-ES'` configurado desde el inicio. |
+| Error `403` al leer grabaciones o transcripciones | Falta consentimiento de administrador o la Application Access Policy de Teams no está asignada al organizador. | Revisar permisos Graph (`Calendars.ReadWrite`, `OnlineMeetings.ReadWrite.All`, `OnlineMeetingRecording.Read.All`, `OnlineMeetingTranscript.Read.All`) y verificar la política con `Get-CsUserPolicyAssignment`. |
+
+<Warning>
+  Los cambios de una Application Access Policy de Teams pueden tardar hasta 30 minutos en propagarse por Microsoft Graph. Si acabas de crear o modificar la política, espera antes de reintentar.
+</Warning>
+
+## Autenticación y autorización
+
+| Síntoma | Causa probable | Solución |
+| --- | --- | --- |
+| Respuesta `401 Unauthorized` en cualquier endpoint `/admin/*` | El token JWT está ausente, es inválido o expiró. | Verificar que el header `Authorization: Bearer <token>` esté presente. Solicitar un nuevo token en `POST /auth/login`. El backend valida `JWT_SECRET` y el campo `sub` del payload. |
+| Respuesta `401` tras cambiar `JWT_SECRET` | Los tokens firmados con la clave anterior ya no son válidos. | Invalidar sesiones activas y solicitar que los usuarios vuelvan a iniciar sesión. |
+| Acceso denegado a `/admin/backoffice/*` | El token es válido pero el usuario no tiene rol de administrador de backoffice. | Verificar que el usuario tenga el rol correspondiente. El backoffice usa un guard separado del rol `pyme`/`consultor`. |
+
+<Info>
+  El `JwtStrategy` del backendextrae el token con `ExtractJwt.fromAuthHeaderAsBearerToken()` y valida el campo `sub` contra la tabla `user`. Si el usuario fue eliminado o marcado como inactivo, la validación falla con `UnauthorizedException`.
+</Info>
+
+## Mercado Pago
+
+| Síntoma | Causa probable | Solución |
+| --- | --- | --- |
+| Webhook de Mercado Pago no se procesa | La firma no se valida (si aplica) o el `topic` no es `payment`. | Verificar que la URL del webhook esté registrada en el dashboard de Mercado Pago. El endpoint es `POST /admin/mercado-pago/webhook`. Revisar que `MERCADO_PAGO_ACCESS_TOKEN` esté configurado. |
+| El pago se aprueba pero no se activa la reunión o suscripción | El `external_reference` del webhook no coincide con ningún `checkout` en la base de datos. | Verificar que el `external_reference` generado al crear la preferencia se guarde correctamente en el registro de `checkout`. |
+| Error en pago con cuenta de consultor (`collection_destination = consultant`) | El `consultantMercadoPagoAccount` no tiene `access_token` válido o no está activo. | Verificar que el consultor haya completado la vinculación con Mercado Pago y que su cuenta tenga permisos de cobro. |
+
+<Note>
+  El backend acepta el webhook incluso cuando `paymentId` falta o el `topic` no es `payment`, respondiendo `{ received: true }` para evitar reintentos innecesarios de Mercado Pago.
+</Note>
+
+## WhatsApp Cloud API
+
+| Síntoma | Causa probable | Solución |
+| --- | --- | --- |
+| Webhook de WhatsApp devuelve `400` o no valida la firma | El middleware `verify` de Express no populó `rawBody`. | Verificar que `main.ts` configure `bodyParser: false` y el middleware `json` con `verify: (req, res, buf) => { req.rawBody = Buffer.from(buf); }`. |
+| `rawBody` vacío o `undefined` | El servidor nginx, un proxy o un middleware intermedio consumió el stream del cuerpo antes de que Express lo capture. | Revisar que ningún proxy altere el cuerpo de la petición. El webhook debe llegar directamente al servidor NestJS. |
+| Plantilla de WhatsApp no se envía | El número de teléfono no está verificado en Meta; o la plantilla no está aprobada; o las variables no coinciden. | Verificar el estado de la plantilla en el dashboard de WhatsApp Business. Revisar los logs del servicio `WhatsappService` para ver el código de error de Meta. |
+| Error `WhatsApp credentials are not configured` | Faltan `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN` o `WHATSAPP_APP_SECRET` en el `.env`. | Completar las variables de entorno y reiniciar el contenedor. |
+
+## Base de datos y migraciones
+
+| Síntoma | Causa probable | Solución |
+| --- | --- | --- |
+| Tablas faltantes o columnas inexistentes | Las migraciones SQL no se aplicaron a la base de datos. | Ejecutar el script de migración manualmente: `DB_VERSION=version_010 npx ts-node src/db/migrate.db.ts`. Verificar que `DB_URL` apunte a la base correcta. |
+| Error `relation "X" does not exist` | La tabla no fue creada por una migración omitida. | Revisar la tabla `migraciones_aplicadas` para confirmar qué archivos `.sql` ya se ejecutaron. Comparar contra el contenido de `src/db/migrations/version_00X`. |
+| Datos inconsistentes entre tablas relacionadas | Restricciones de integridad no aplicadas por migración anterior. | Verificar que las foreign keys y los índices únicos existen en el schema. Las migraciones manuales en `src/db/migrations/` deben ejecutarse en orden. |
+
+<Warning>
+  Las migraciones (`db:migrate`, `db:create`, `db:reset`, `db:seed`, `db:backup`, `db:restore`) solo deben ejecutarlas humanos autorizados en ambientes productivos. Nunca las ejecutes automáticamente durante el despliegue sin revisión previa.
+</Warning>
+
+## Diagnóstico general
+
+Si un problema no encaja en las tablas anteriores, sigue este orden:
+
+<Steps>
+  <Step title="Revisa los logs del servicio">
+    Busca el `correlation id` o el ID de entidad relacionado (`meetingId`, `checkoutId`, `userId`) en los logs de stdout del contenedor Docker.
+  </Step>
+  <Step title="Verifica las variables de entorno">
+    Confirma que `.env` contiene los valores correctos y que no hay espacios ni comillas mal cerradas.
+  </Step>
+  <Step title="Confirma el estado de las integraciones externas">
+    - Microsoft Graph: verifica tokens y Application Access Policy.
+    - Mercado Pago: verifica webhooks y credenciales del vendedor.
+    - WhatsApp: verifica plantillas aprobadas y firma del webhook.
+  </Step>
+  <Step title="Revisa la base de datos">
+    Confirma que las migraciones aplicadas coinciden con la versión esperada (`version_010` en la última entrega).
+  </Step>
+</Steps>

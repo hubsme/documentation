@@ -1,0 +1,77 @@
+---
+title: "Notas de version del frontend Hubsme"
+sidebarTitle: "Release Notes"
+description: "Hitos funcionales visibles del frontend de Hubsme: SSR, Tailwind 4, Teams calendar-backed, Mercado Pago, membresias de PYME y backoffice de pagos a consultores."
+---
+
+El frontend de Hubsme evoluciona junto al backend. Las funcionalidades visibles para PYMES y consultores se agrupan en hitos que corresponden a las migraciones de base de datos del backend (version_002 a version_010).
+
+<Info>
+  Las versiones especificas de release siguen las migraciones del backend. No hay versionado semantico independiente del frontend. Consulta las migraciones en `src/db/migrations/` del backend para el detalle exacto de cada cambio de esquema.
+</Info>
+
+## SSR habilitado (Angular 20.3)
+
+Migracion a Angular 20.3 con Server-Side Rendering completo. El build genera bundles para navegador y servidor, y el arranque de produccion usa `node dist/front-hubsme/server/server.mjs`.
+
+- Hidratacion con `provideClientHydration(withEventReplay())`
+- Deteccion de cambios sin zonas (`provideZonelessChangeDetection()`)
+- Locale global `es-PE` con zona horaria `America/Lima`
+
+## Migracion a Tailwind CSS 4
+
+Actualizacion de Tailwind a la version 4 con el paquete `@tailwindcss/postcss`. Los estilos base se mantienen en `src/styles.css` y los componentes usan clases de utilidad de Tailwind sin CSS custom adicional.
+
+## Integracion Microsoft Teams calendar-backed
+
+Las reuniones se crean internamente en Microsoft Graph. El frontend:
+
+- Redirige al usuario al `joinWebUrl` de Teams (no embebe)
+- Muestra estado de reunion, grabaciones y transcripciones desde OneDrive
+- Usa `angular-calendar` para la vista de disponibilidad del consultor
+
+## Integracion Mercado Pago con checkout Hubsme
+
+Flujo de pago completo para PYMES:
+
+- Checkout generado por el backend con split de comision (`MERCADO_PAGO_PLATFORM_FEE_PERCENT`)
+- Redireccion a `initPoint` o `sandboxInitPoint` segun entorno
+- Polling de estado de pago desde el frontend hasta confirmacion
+
+Los consultores conectan su cuenta de Mercado Pago via OAuth para recibir pagos directos.
+
+## Membresias de PYME (`pyme_member`)
+
+Soporte para multiples miembros dentro de una PYME:
+
+- Rol `owner`: control total, pagos, invitaciones, equipo
+- Rol `member`: acceso de lectura a reuniones, tareas y diagnosticos
+- Invitaciones pendientes gestionadas desde el perfil de la PYME
+
+## Backoffice de pagos a consultores
+
+Panel administrativo para el equipo interno de Hubsme:
+
+- Listado de payouts generados por reunion (`meeting-consultant-payout`)
+- Trazabilidad completa de reprogramaciones y pagos
+- Marcado manual de payout como `paid` con evidencia de transferencia
+
+## Otras mejoras incluidas
+
+<CardGroup cols={2}>
+  <Card title="Editor enriquecido" icon="pen">
+    ngx-quill para actas de reunion y documentos de diagnostico
+  </Card>
+
+  <Card title="Graficos interactivos" icon="chart">
+    ng-apexcharts para dashboards de consultor y diagnosticos
+  </Card>
+
+  <Card title="Calendario Google" icon="calendar">
+    OAuth para sincronizar disponibilidad del consultor
+  </Card>
+
+  <Card title="PDF y telefonia" icon="file">
+    pdfjs-dist, jspdf e intl-tel-input para documentos y validacion
+  </Card>
+</CardGroup>

@@ -1,0 +1,67 @@
+---
+title: "Solucion de problemas del frontend"
+sidebarTitle: "Troubleshooting"
+description: "Tabla de problemas frecuentes del frontend Hubsme: sesiones expiradas, CORS, errores de SSR, fechas desplazadas y redirecciones de Teams."
+---
+
+Esta guia recoge los problemas mas comunes que pueden aparecer al desarrollar o usar el frontend de Hubsme, junto con sus causas probables y soluciones.
+
+## Tabla de problemas y soluciones
+
+| Síntoma | Causa probable | Solucion |
+| --- | --- | --- |
+| 401 despues de cambiar contraseña | El token JWT almacenado ya no es valido | Llama `SessionService.clearSession()` o `AdminSessionService.removeSession()` y vuelve a iniciar sesion |
+| CORS al llamar al backend | `NG_APP_BASE_URL` apunta a un origen distinto o el backend no tiene configurado el origen del frontend | Verifica que `NG_APP_BASE_URL` coincida con la URL del backend y que el CORS del backend incluya el dominio del frontend |
+| SSR falla con `window is not defined` | Un componente o servicio accede a `window`, `document` o `localStorage` durante el renderizado en servidor | Envuelve el acceso en `if (isPlatformBrowser(this.platformId))` |
+| Fechas desplazadas en un dia | Se uso `new Date('YYYY-MM-DD')`, que interpreta la fecha como UTC y luego la convierte a zona local | Usa siempre `peruDateOnlyToUtc()` o `formatInPeru()` desde `src/functions/date.function.ts` |
+| La redireccion a Teams no abre | El meeting no tiene `redirectUrl` generado o el usuario no esta autenticado | Revisa que la reunion tenga estado `available` y que `meetingService.access(id)` devuelva `redirectUrl` |
+| Checkout de Mercado Pago no carga | `initPoint` o `sandboxInitPoint` son nulos | Verifica que el backend haya generado el checkout correctamente y que el `checkoutId` exista |
+| Popup de Google Calendar bloqueado | El navegador bloqueo la ventana emergente | Solicita al usuario que permita popups para el dominio de Hubsme |
+| Toast o alerta no aparece | El componente de UI no esta importado en la ruta actual | Asegurate de que el componente raiz que renderiza `<app-alert>` y `<app-toast>` este presente en el layout |
+
+## Errores de sesion
+
+Si un usuario cambia su contraseña desde otro dispositivo, el token anterior se invalida. El `customFetch` del `AdminApiService` detecta 401 y redirige al login, pero la sesion de usuario comun se maneja desde `app.config.ts`.
+
+```ts
+// Limpieza manual de sesion
+import { SessionService } from '@service/session.service';
+
+sessionService.removeSession();
+```
+
+## Errores de zona horaria
+
+La regla mas importante: nunca uses `new Date('2025-08-20')` para fechas de negocio. El constructor interpreta la cadena como UTC y la conversion a `America/Lima` puede restar 5 horas, desplazando el dia.
+
+```ts
+// Correcto
+import { peruDateOnlyToUtc, formatInPeru } from '@function/date.function';
+
+const start = peruDateOnlyToUtc('2025-08-20');
+const label = formatInPeru(apiTimestamp, { dateStyle: 'long', timeStyle: 'short' });
+```
+
+## Errores de SSR
+
+Si aparece `ReferenceError: window is not defined` en los logs del servidor Node, busca el archivo que accede a `window` sin verificar el entorno:
+
+```bash
+grep -rn "window\." src/ --include="*.ts"
+```
+
+Envuelve cada acceso en:
+
+```ts
+import { isPlatformBrowser } from '@angular/common';
+import { inject, PLATFORM_ID } from '@angular/core';
+
+const platformId = inject(PLATFORM_ID);
+if (isPlatformBrowser(platformId)) {
+  window.addEventListener('message', handler);
+}
+```
+
+<Warning>
+  Los guards `authGuard` y `adminAuthGuard` ya incluyen la verificacion `isPlatformBrowser`. Si agregas nuevos guards que lean `localStorage`, asegurate de incluir la misma proteccion.
+</Warning>

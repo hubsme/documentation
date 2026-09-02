@@ -1,0 +1,116 @@
+---
+title: "Incidencias conocidas del backend"
+sidebarTitle: "Incidencias"
+description: "Limitaciones y comportamientos esperados del backend Hubsme: membresías, permisos de PYME, grabaciones Teams, comisiones de Mercado Pago, cupones y propagación de políticas."
+---
+
+Esta página documenta las limitaciones y comportamientos actuales del backend que pueden afectar la operación diaria. Conocerlos permite tomar mejores decisiones de diseño y comunicar correctamente a los usuarios finales qué esperar de la plataforma.
+
+## Membresías activas por usuario
+
+<Warning>
+  En el MVP actual, un usuario solo puede tener una membresía activa a la vez. La tabla `subscription` tiene un índice único `subscription_user_unique_active_idx` que impide duplicados para un mismo `userId` con `deletedAt IS NULL`.
+</Warning>
+
+Esto significa que:
+
+- Un usuario con una suscripción activa no puede contratar un plan adicional sin cancelar o expirar la existente.
+- El backoffice debe verificar el estado actual antes de ofrecer cambios de plan.
+- Las promociones de tipo "prueba gratuita" comparten el mismo slot de membresía activa.
+
+## Permisos de miembros de PYME
+
+<Info>
+  La tabla `pyme_member` define dos roles: `owner` y `member`. Solo un miembro con rol `owner` puede gestionar escritura, pagos y equipo de la PYME.
+</Info>
+
+Comportamiento actual:
+
+- Los miembros con rol `member` tienen acceso de lectura a la información de la PYME.
+- El `owner` es el único que puede:
+  - Invitar o remover miembros.
+  - Realizar pagos y gestionar suscripciones.
+  - Crear o editar solicitudes de servicio y reuniones.
+- Un usuario solo puede pertenecer a una PYME activa a la vez (`pyme_member_user_unique_active_idx`).
+
+Si un `member` necesita permisos de escritura, la única opción actual es que el `owner` transfiera la propiedad (si la plataforma lo permite) o que el usuario cree su propia PYME.
+
+## Grabaciones en OneDrive
+
+<Warning>
+  Las grabaciones de Microsoft Teams dependen del aprovisionamiento completo de Microsoft 365 del organizador configurado en `MS_GRAPH_TEAMS_ORGANIZER_USER_ID`.
+</Warning>
+
+Requisitos que deben cumplirse todos al mismo tiempo:
+
+- El organizador debe tener licencia de Microsoft Teams.
+- El buzón debe ser de tipo `UserMailbox` en Exchange Online.
+- OneDrive for Business debe estar aprovisionado.
+- La política de almacenamiento del tenant no debe bloquear el acceso anónimo a enlaces compartidos.
+
+Si alguno de estos requisitos falla, el endpoint `GET /admin/meeting/recordings/:id` puede devolver una lista vacía incluso cuando la reunión sí fue grabada en Teams.
+
+## Comisión real de Mercado Pago
+
+<Info>
+  El cargo real que Mercado Pago aplica se determina en cada operación leyendo `transaction_details.net_received_amount` del objeto de pago. No es un porcentaje fijo configurado por Hubsme.
+</Info>
+
+Detalles importantes:
+
+- El campo `MERCADO_PAGO_PLATFORM_FEE_PERCENT` existe como referencia inicial, pero la fuente de verdad es el neto recibido (`net_received_amount`).
+- La función `getMercadoPagoSettlement` calcula la comisión real como `grossAmount - netReceivedAmount` y usa `fee_details` solo como respaldo cuando `net_received_amount` no está disponible.
+- Los pagos con `collection_destination = consultant` usan el `access_token` de la cuenta Mercado Pago vinculada por el consultor, por lo que la comisión puede variar según la configuración de esa cuenta.
+
+<Note>
+  Siempre revisa el valor `feePercent` calculado por el backend en el registro de `checkout`, no el valor de la variable de entorno, para reportes financieros exactos.
+</Note>
+
+## Cupones de promoción
+
+<Warning>
+  Los cupones (`promotion_code`) aplican un descuento al momento del pago, pero no generan obligaciones contables ni deudas en el sistema.
+</Warning>
+
+Esto implica:
+
+- Un cupón puede dejar el monto final en cero sin que exista un registro de "deuda saldada".
+- El backoffice no debe esperar un pago asociado para operaciones donde el cupón cubrió el 100% del monto.
+- La redención de un cupón se registra en `promotion_code_redemption`, vinculada al `checkout` correspondiente.
+
+## Checkouts históricos con destino de consultor
+
+<Info>
+  Los registros de `checkout` con `collection_destination = consultant` creados en versiones anteriores se conservan en la base de datos para mantener la trazabilidad histórica.
+</Info>
+
+Esto no afecta los nuevos pagos, pero es importante tenerlo en cuenta al:
+
+- Generar reportes financieros que agrupan por `collection_destination`.
+- Migrar datos o auditar pagos antiguos.
+- Explicar diferencias en el split de ingresos entre períodos.
+
+## Propagación de políticas de Teams
+
+<Warning>
+  La Application Access Policy de Microsoft Teams puede tardar hasta 30 minutos en propagarse en Microsoft Graph después de su creación o modificación.
+</Warning>
+
+Síntomas de política no propagada:
+
+- Error `403` al leer grabaciones o transcripciones, aunque los permisos Graph y el consentimiento estén correctos.
+- `Get-CsUserPolicyAssignment` muestra la política asignada, pero Graph sigue rechazando la petición.
+
+Solución: esperar la propagación. No reinstalar la aplicación ni regenerar secretos, ya que eso no acelera el proceso.
+
+## Resumen de limitaciones
+
+| Tema | Limitación | Impacto |
+| --- | --- | --- |
+| Membresía | Solo una activa por usuario | No hay planes múltiples ni familiares |
+| PYME | Solo `owner` escribe y paga | Miembros son de solo lectura |
+| Grabaciones | Requieren M365 aprovisionado | Pueden no aparecer en OneDrive |
+| Comisión MP | Determinada por `net_received_amount` | No es porcentaje fijo |
+| Cupones | No generan obligaciones | Descuentos al 100% no dejan deuda |
+| Checkouts antiguos | Se conservan con `collection_destination = consultant` | Trazabilidad histórica intacta |
+| Teams policy | Hasta 30 min de propagación | Retraso temporal en acceso a artefactos |

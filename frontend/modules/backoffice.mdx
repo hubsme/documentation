@@ -1,0 +1,70 @@
+---
+title: "Backoffice de la plataforma"
+sidebarTitle: "Backoffice"
+description: "Panel de administracion de Hubsme para el equipo interno: codigos promocionales, PYMES, consultores, reuniones y soporte."
+---
+
+El backoffice es el panel de administracion interno de Hubsme. Esta protegido por `adminAuthGuard` y requiere una sesion con rol `admin` almacenada en `localStorage` bajo la clave `admin_session`.
+
+## Acceso y layout
+
+La ruta raiz es `/backoffice`. El layout principal (`src/modules/backoffice/backoffice.ts`) incluye navegacion lateral con enlaces a las secciones administrativas y un boton de cierre de sesion que elimina la sesion de administrador y redirige al login de backoffice.
+
+```typescript
+// backoffice.ts
+readonly promotionCodesPath = `/${buildPath(PATH.backoffice.promotionCodes)}`;
+readonly pymesPath = `/${buildPath(PATH.backoffice.pymes)}`;
+readonly consultantsPath = `/${buildPath(PATH.backoffice.consultants)}`;
+readonly meetingsPath = `/${buildPath(PATH.backoffice.meetings)}`;
+readonly supportPath = `/${buildPath(PATH.backoffice.support)}`;
+
+async logout() {
+  this.adminSession.removeSession();
+  await this.router.navigate([buildPath(PATH.auth.adminLogin)]);
+}
+```
+
+## Subrutas del backoffice
+
+Segun `src/app/app.routes.ts`, las rutas hijas de `/backoffice` son:
+
+| Ruta | Componente | Descripcion |
+| --- | --- | --- |
+| `/backoffice/codigos-promocionales` | `Codes` | Gestion de codigos promocionales: crear, activar, desactivar y ver estadisticas de uso |
+| `/backoffice/pymes` | `Pymes` | Listado y administracion de empresas registradas en la plataforma |
+| `/backoffice/consultores` | `Consultores` | Directorio de consultores: verificar identidad, activar cuentas y supervisar perfiles |
+| `/backoffice/reuniones` | `Reuniones` | Monitoreo de todas las reuniones programadas en la plataforma |
+| `/backoffice/soporte` | `Soporte` | Centro de tickets de soporte de usuarios (PYMES y consultores) |
+
+## Codigos promocionales
+
+En `/backoffice/codigos-promocionales`, el equipo de Hubsme puede:
+
+- Crear nuevos codigos con descuento porcentual o fijo
+- Definir fecha de expiracion y limite de usos
+- Activar o desactivar codigos existentes
+- Ver metricas de redencion
+
+## Gestion de usuarios
+
+<CardGroup cols={2}>
+  <Card title="PYMES" icon="building">
+    Visualizacion del listado de empresas registradas, estado de suscripcion, miembros del equipo y actividad reciente.
+  </Card>
+
+  <Card title="Consultores" icon="user-tie">
+    Verificacion de identidad, aprobacion de cuentas, supervision de servicios ofrecidos y estado de payouts.
+  </Card>
+</CardGroup>
+
+## Reuniones y soporte
+
+En `/backoffice/reuniones`, el equipo puede supervisar todas las reuniones de la plataforma: estado, participantes, grabaciones y transcripciones. En `/backoffice/soporte` se gestionan los tickets de ayuda enviados por PYMES y consultores.
+
+<Warning>
+  El backoffice usa `AdminSessionService` (separado de `SessionService`). El token JWT de admin se almacena en `localStorage` bajo `admin_session` y se envia en el header `Authorization: Bearer <token>` en cada peticion al backend.
+</Warning>
+
+<Note>
+  Si un administrador intenta acceder al backoffice sin sesion activa, `adminAuthGuard` redirige automaticamente a `/auth/admin-login` con `returnUrl` para retornar tras la autenticacion.
+</Note>

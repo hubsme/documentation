@@ -1,0 +1,88 @@
+---
+title: "Flujo de datos del frontend Hubsme"
+sidebarTitle: "Flujo de Datos"
+description: "Como fluye la autenticacion, las llamadas API tipadas, los guards de rol y las redirecciones a Teams en el frontend Angular SSR de Hubsme."
+---
+
+El frontend de Hubsme maneja el flujo de datos desde la restauracion de sesion hasta las llamadas al backend tipado, pasando por guards de autorizacion y conversiones de zona horaria. Comprender este flujo es clave para trabajar con la aplicacion.
+
+<Steps>
+  <Step title="Restauracion de sesion">
+    Al iniciar la aplicacion, `SessionService` intenta leer `user_session` desde `localStorage` en el navegador. Si existe, parsea el JWT, el perfil de usuario y la organizacion, y actualiza la signal `session()`. `AdminSessionService` hace lo propio con `admin_session` para el backoffice.
+
+    ```typescript
+    // SessionService.restoreSession()
+    const session = localStorage.getItem('user_session');
+    if (session) {
+      this.session.set(JSON.parse(session));
+      this.restored = true;
+    }
+    ```
+  </Step>
+  <Step title="Proteccion de rutas con guards">
+    `authGuard` verifica la sesion restaurada antes de permitir el acceso a rutas protegidas. Si no hay sesion, redirige a `/auth/sign-in` con `returnUrl`. Si el rol no tiene permiso para la ruta, redirige al dashboard por defecto del rol.
+
+    ```typescript
+    // authGuard
+    sessionService.restoreSession();
+    if (!sessionService.session()) {
+      return router.createUrlTree([buildPath(PATH.auth.signIn)], {
+        queryParams: { returnUrl: state.url },
+      });
+    }
+    ```
+
+    `adminAuthGuard` hace lo mismo para el backoffice, redirigiendo a `/auth/admin-login` si falta la sesion de administrador.
+  </Step>
+  <Step title="Seleccion de layout admin">
+    Dentro de `/admin/*`, las funciones `matchPyme` y `matchConsultor` leen el rol del usuario desde la sesion activa y seleccionan el layout correspondiente:
+
+    ```typescript
+    const matchPyme = () => {
+      const sessionService = inject(SessionService);
+      sessionService.restoreSession();
+      return sessionService.session()?.user.role === 'pyme';
+    };
+    ```
+
+    Si ningun matcher coincide, el router no activa ninguna ruta hija.
+  </Step>
+  <Step title="Llamadas al backend tipado">
+    Los servicios en `src/services/admin/*` inyectan la clase `Api` generada por `swagger-typescript-api` y delegan las llamadas al backend. El cliente agrega automaticamente el header `Authorization: Bearer <token>` desde `localStorage`.
+
+    ```typescript
+    // MeetingService
+    findAll(query: ApiQuery<'meeting', 'findAll'> = {}) {
+      return this.api.meeting.findAll(query).then((response) => response.data);
+    }
+    ```
+
+    Si el backend responde con `401`, el `customFetch` del `HttpClient` elimina la sesion y redirige al login.
+  </Step>
+  <Step title="Redireccion a Microsoft Teams">
+    Cuando un usuario accede a una reunion via `/reuniones/:id`, el frontend llama a `GET /admin/meeting/access/:id`. Si la respuesta indica que la reunion esta disponible, el frontend redirige el navegador directamente a la URL de Teams usando `window.location.href` o `window.location.replace`.
+
+    ```typescript
+    // meeting-access.ts
+    if (access.status === 'available' && access.redirectUrl) {
+      this.redirecting.set(true);
+      window.location.replace(access.redirectUrl);
+    }
+    ```
+  </Step>
+  <Step title="Manejo de fechas en Peru">
+    Todas las fechas se convierten a la zona horaria `America/Lima` (UTC-5) usando `src/functions/date.function.ts`. El `DatePipe` global esta configurado en `app.config.ts` con locale `es-PE` y timezone `America/Lima`.
+
+    ```typescript
+    // app.config.ts
+    { provide: LOCALE_ID, useValue: 'es-PE' },
+    { provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: { timezone: PERU_TIME_ZONE } },
+    ```
+
+    Las funciones clave incluyen `formatInPeru`, `peruDateOnlyToUtc`, `dateKeyInPeru`, `monthKeyInPeru` y `formatDateForDatetimeLocal` para inputs de fecha.
+  </Step>
+</Steps>
+
+<Info>
+  El estado offline se maneja con **Dexie** (IndexedDB). Aunque la aplicacion esta preparada para SSR, todas las rutas se renderizan en modo cliente (`RenderMode.Client`) segun `app.routes.server.ts`.
+</Info>

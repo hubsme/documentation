@@ -1,0 +1,105 @@
+---
+title: "Pruebas del frontend Hubsme"
+sidebarTitle: "Pruebas"
+description: "El frontend usa Karma y Jasmine para pruebas unitarias. Aprende como ejecutarlas y como estructurar tests para servicios con HttpTestingController y componentes con TestBed."
+---
+
+El frontend de Hubsme usa el stack estandar de Angular para pruebas unitarias: Karma como test runner y Jasmine como framework de aserciones. No hay pruebas end-to-end configuradas actualmente.
+
+## Ejecutar pruebas
+
+```bash
+npm test
+```
+
+Este comando corre `ng test`, que levanta Karma en un navegador headless e informa resultados en la terminal.
+
+## Configuracion
+
+La configuracion de pruebas esta en `angular.json` bajo el builder `@ngx-env/builder:karma`. Usa Chrome Headless por defecto y genera reportes de cobertura en la carpeta `coverage/`.
+
+```json
+{
+  "test": {
+    "builder": "@ngx-env/builder:karma",
+    "options": {
+      "polyfills": ["zone.js", "zone.js/testing"],
+      "tsConfig": "tsconfig.spec.json",
+      "assets": [{ "glob": "**/*", "input": "public" }],
+      "styles": ["src/styles.css"],
+      "scripts": []
+    }
+  }
+}
+```
+
+## Probar servicios con HttpTestingController
+
+Los servicios de dominio que llaman al backend se prueban mejor con `HttpTestingController` para interceptar y verificar peticiones HTTP.
+
+```ts
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { MeetingService } from '@service/admin/meeting.service';
+
+describe('MeetingService', () => {
+  let service: MeetingService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [MeetingService, provideHttpClientTesting()],
+    });
+    service = TestBed.inject(MeetingService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('should fetch meetings', async () => {
+    const promise = service.findAll({});
+    const req = httpMock.expectOne('/api/meeting/find-all');
+    expect(req.request.method).toBe('GET');
+    req.flush({ data: [] });
+    await expectAsync(promise).toBeResolved();
+  });
+});
+```
+
+## Probar componentes con TestBed
+
+Para componentes que dependen del router o de senales, usa `TestBed` junto con `provideRouter` y `ComponentFixture`.
+
+```ts
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { Meetings } from './meetings';
+
+describe('Meetings', () => {
+  let fixture: ComponentFixture<Meetings>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [Meetings],
+      providers: [provideRouter([])],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(Meetings);
+    fixture.detectChanges();
+  });
+
+  it('should create', () => {
+    expect(fixture.componentInstance).toBeTruthy();
+  });
+});
+```
+
+<Warning>
+  No instancies manualmente servicios con `new` en las pruebas si dependen de `inject()`. Usa siempre `TestBed.inject()` para que Angular resuelva las dependencias correctamente.
+</Warning>
+
+## Recomendaciones
+
+- Mockea `PLATFORM_ID` como `'browser'` cuando pruebes codigo que usa `isPlatformBrowser`.
+- Evita llamadas reales al backend en las pruebas unitarias; usa `HttpTestingController`.
+- Si un componente usa `window.open` o `localStorage`, crea un mock inyectable para mantener las pruebas aisladas.
