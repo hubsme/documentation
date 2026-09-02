@@ -17,6 +17,17 @@
   "navigation": {
     "tabs": [
       {
+        "tab": "Inicio",
+        "groups": [
+          {
+            "group": "Introducción",
+            "pages": [
+              "index"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "Backend",
         "groups": [
           {
@@ -163,17 +174,6 @@
             "group": "10. Notas de Versión",
             "pages": [
               "frontend/release-notes"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Inicio",
-        "groups": [
-          {
-            "group": "Introducción",
-            "pages": [
-              "index"
             ]
           }
         ]
